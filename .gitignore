@@ -1,0 +1,12 @@
+# Ignore large files
+*.zip
+*.png
+*.jpg
+*.DS_Store
+
+# Ignore tmp
+tmp/
+
+# Ignore .openclaw (local config)
+.openclaw/
+.clawhub/
