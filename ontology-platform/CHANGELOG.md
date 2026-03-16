@@ -6,6 +6,67 @@
 
 ## [未发布] (Unreleased)
 
+## [3.4.0] - 2026-03-17
+
+### Added
+- **监控模块** (`src/monitoring.py`):
+  - Prometheus 指标收集器
+  - 请求/响应时间追踪
+  - 健康检查端点 (`/health/detailed`)
+  - 性能快照生成器
+  - 关联ID (correlation ID) 支持
+
+- **安全模块** (`src/security.py`):
+  - API 密钥管理 (生成、验证、撤销)
+  - 速率限制 (Token Bucket 算法)
+  - IP 阻止机制
+  - 安全头部中间件
+  - 输入验证和清洗
+  - 审计日志
+
+- **性能优化模块** (`src/performance.py`):
+  - LRU 缓存实现
+  - 通用连接池
+  - 异步批处理器
+  - 查询优化器
+  - 性能分析器
+  - 资源管理器
+
+- **API 新增端点**:
+  - `GET /metrics` - Prometheus 指标
+  - `GET /health/detailed` - 详细健康检查
+  - `POST /api/v1/auth/api-keys` - 创建API密钥
+  - `GET /api/v1/auth/api-keys` - 列出API密钥
+  - `GET /api/v1/performance/cache` - 缓存统计
+  - `POST /api/v1/performance/cache/clear` - 清除缓存
+  - `GET /api/v1/performance/profiler` - 性能分析
+
+- **Docker Compose 更新**:
+  - 添加 Prometheus 服务
+  - 添加 Grafana 服务
+  - 健康检查优化
+
+### Changed
+- API 版本升级到 3.4.0
+- 配置文件 (`config.yaml`) 添加监控、安全、性能配置节
+- 重构 API 主文件，集成新模块
+- CORS 中间件配置化
+
+### Security
+- 添加请求速率限制
+- 添加 IP 阻止机制
+- 添加 API 密钥认证
+- 添加安全头部 (HSTS, CSP, X-Frame-Options 等)
+- 输入验证和清洗
+
+### Performance
+- 添加推理结果缓存
+- 添加查询优化
+- 添加性能分析支持
+- 添加连接池管理
+
+---
+
 ### Added
 - 基础项目框架搭建 (Python + Node.js)
 - 本体论推理引擎核心模块

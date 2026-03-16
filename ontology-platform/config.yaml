@@ -1,5 +1,6 @@
 # Ontology Platform Configuration
 # 本配置文件包含环境、数据库和推理引擎的配置
+# v3.4.0 更新: 添加监控、安全和性能优化配置
 
 # ============================================
 # 1. 环境配置
@@ -16,6 +17,7 @@ environment:
     host: 0.0.0.0
     port: 8080
     timeout: 30
+    workers: 4
   
   # 安全配置
   security:
@@ -24,9 +26,65 @@ environment:
       - http://localhost:3000
       - http://localhost:8080
     api_key_required: false
+    rate_limit_per_minute: 100
+    rate_limit_burst: 20
 
 # ============================================
-# 2. 数据库配置
+# 2. 监控配置
+# ============================================
+monitoring:
+  # Prometheus 指标
+  prometheus:
+    enabled: true
+    scrape_interval: 15s
+  
+  # 健康检查
+  health_check:
+    enabled: true
+    detailed: true
+  
+  # 性能监控
+  performance:
+    enabled: true
+    track_inference_time: true
+    track_cache_hits: true
+  
+  # 日志聚合
+  logging:
+    request_logging: true
+    correlation_id_header: X-Correlation-ID
+    log_request_body: false  # 生产环境设为false
+    log_response_body: false
+
+# ============================================
+# 3. 性能优化配置
+# ============================================
+performance:
+  # 缓存配置
+  cache:
+    enabled: true
+    ttl_seconds: 3600
+    max_size: 1000
+  
+  # 连接池配置
+  connection_pool:
+    min_size: 2
+    max_size: 20
+    checkout_timeout: 30
+  
+  # 查询优化
+  query_optimization:
+    enabled: true
+    query_cache_ttl: 600
+    slow_query_threshold_ms: 1000
+  
+  # 批处理
+  batch_processing:
+    batch_size: 10
+    max_concurrent_batches: 5
+
+# ============================================
+# 4. 数据库配置
 # ============================================
 database:
   # 数据库类型: sqlite | postgresql | mysql
@@ -69,7 +127,7 @@ database:
     migration_path: ./migrations
 
 # ============================================
-# 3. 推理引擎配置
+# 5. 推理引擎配置
 # ============================================
 inference_engine:
   # 推理引擎类型: local | openai | ollama | anthropic

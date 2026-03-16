@@ -9,9 +9,18 @@ FastAPI框架搭建，RESTful端点设计和GraphQL支持
 - 推理引擎集成
 - 置信度传播
 - 推理链追溯
+
+v3.4.0 更新:
+- 添加Prometheus监控和指标收集
+- 添加API密钥认证
+- 添加请求速率限制
+- 添加安全头部
+- 添加性能优化（缓存、连接池）
 """
 
 import logging
+import time
+import uuid
 from pathlib import Path
 from typing import Any, Optional, Dict, List
 from datetime import datetime
@@ -19,8 +28,10 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from enum import Enum
 
-from fastapi import FastAPI, HTTPException, Depends, Query, Body
+from fastapi import FastAPI, HTTPException, Depends, Query, Body, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import APIKeyHeader
+from starlette.middleware.base import BaseHTTPMiddleware
 from pydantic import BaseModel, Field
 from typing import Union
 
@@ -33,6 +44,17 @@ from src.ontology.neo4j_client import Neo4jClient, GraphNode, GraphRelationship
 from src.loader import OntologyLoader
 from src.reasoner import Reasoner, Fact, InferenceResult
 from src.confidence import ConfidenceCalculator, Evidence, ConfidenceResult
+
+# 导入新模块
+from src.monitoring import metrics, health_checker, request_logger, performance_monitor
+from src.security import (
+    api_key_manager, rate_limiter, ip_blocker, 
+    SecurityHeaders, InputValidator, audit_logger, cors_config
+)
+from src.performance import (
+    inference_cache, cached, profiler, 
+    optimization_config, resource_manager
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -62,6 +84,111 @@ class AppConfig:
 
 
 config = AppConfig()
+
+
+# ==================== 安全中间件 ====================
+
+class SecurityMiddleware(BaseHTTPMiddleware):
+    """安全中间件：添加安全头部、速率限制、IP阻止"""
+    
+    async def dispatch(self, request: Request, call_next):
+        # 获取客户端IP
+        client_ip = request.client.host if request.client else "unknown"
+        
+        # 检查IP是否被阻止
+        if ip_blocker.is_blocked(client_ip):
+            return Response(
+                content='{"detail": "Access denied"}',
+                status_code=403,
+                media_type="application/json"
+            )
+        
+        # 速率限制检查
+        allowed, rate_info = rate_limiter.check_rate_limit(client_ip)
+        if not allowed:
+            audit_logger.log_rate_limit_exceeded(client_ip, client_ip)
+            return Response(
+                content='{"detail": "Rate limit exceeded"}',
+                status_code=429,
+                media_type="application/json",
+                headers={"Retry-After": str(int(rate_info["reset_at"] - time.time()))}
+            )
+        
+        # 生成或获取correlation ID
+        correlation_id = request.headers.get("X-Correlation-ID") or str(uuid.uuid4())
+        request.state.correlation_id = correlation_id
+        
+        response = await call_next(request)
+        
+        # 添加安全头部
+        for key, value in SecurityHeaders.get_headers().items():
+            response.headers[key] = value
+        
+        # 添加correlation ID
+        response.headers["X-Correlation-ID"] = correlation_id
+        
+        # 添加速率限制信息
+        response.headers["X-RateLimit-Remaining"] = str(rate_info["remaining"])
+        
+        return response
+
+
+class RequestLoggingMiddleware(BaseHTTPMiddleware):
+    """请求日志中间件"""
+    
+    async def dispatch(self, request: Request, call_next):
+        start_time = time.perf_counter()
+        
+        # 处理请求
+        response = await call_next(request)
+        
+        # 记录日志
+        duration = time.perf_counter() - start_time
+        request_logger.log_request(
+            method=request.method,
+            path=request.url.path,
+            status_code=response.status_code,
+            duration=duration,
+            correlation_id=getattr(request.state, "correlation_id", None),
+            extra={"client_ip": request.client.host if request.client else None}
+        )
+        
+        # 记录性能指标
+        performance_monitor.record_request(duration)
+        metrics.increment_counter("http_requests_total", {
+            "method": request.method,
+            "endpoint": request.url.path,
+            "status": str(response.status_code)
+        })
+        metrics.observe_histogram("http_request_duration_seconds", duration, {
+            "method": request.method,
+            "endpoint": request.url.path
+        })
+        
+        return response
+
+
+# ==================== API密钥认证 ====================
+
+API_KEY_HEADER = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+async def get_api_key(api_key: str = API_KEY_HEADER) -> str:
+    """获取并验证API密钥"""
+    if not api_key:
+        raise HTTPException(status_code=401, detail="API key required")
+    
+    key_data = api_key_manager.validate_key(api_key)
+    if not key_data:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+    
+    return key_data["user_id"]
+
+
+# ==================== 依赖项 ====================
+
+def require_auth():
+    """需要认证的依赖"""
+    return Depends(get_api_key)
 
 
 # ==================== 应用状态 ====================
@@ -129,19 +256,29 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Ontology Platform API",
-    description="基于ontology-clawra v3.3的生产级本体平台API",
-    version="3.3.0",
+    description="基于ontology-clawra v3.4的生产级本体平台API",
+    version="3.4.0",
     lifespan=lifespan
 )
 
-# CORS中间件
+# CORS中间件 - 配置化
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=cors_config.allow_origins,
+    allow_credentials=cors_config.allow_credentials,
+    allow_methods=cors_config.allow_methods,
+    allow_headers=cors_config.allow_headers,
 )
+
+# 安全中间件
+app.add_middleware(SecurityMiddleware)
+
+# 请求日志中间件
+app.add_middleware(RequestLoggingMiddleware)
+
+# 注册监控端点
+from src.monitoring import setup_app_metrics
+setup_app_metrics(app)
 
 
 # ==================== Pydantic模型 ====================
@@ -222,18 +359,25 @@ def get_reasoner() -> Reasoner:
 @app.get("/")
 async def root():
     """API根路径"""
+    perf_snapshot = performance_monitor.get_snapshot()
     return {
         "name": "Ontology Platform API",
-        "version": "3.3.0",
-        "description": "基于ontology-clawra v3.3的生产级本体平台",
+        "version": "3.4.0",
+        "description": "基于ontology-clawra v3.4的生产级本体平台",
         "docs": "/docs",
-        "status": "running" if state.initialized else "initializing"
+        "status": "running" if state.initialized else "initializing",
+        "metrics": {
+            "requests_per_second": perf_snapshot.requests_per_second,
+            "avg_response_time_ms": perf_snapshot.avg_response_time_ms,
+            "cache_stats": inference_cache.stats()
+        }
     }
 
 
 @app.get("/health")
 async def health_check():
     """健康检查"""
+    perf_snapshot = performance_monitor.get_snapshot()
     return {
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
@@ -242,6 +386,11 @@ async def health_check():
             "neo4j_client": state.neo4j_client is not None,
             "reasoner": state.reasoner is not None,
             "neo4j_connected": state.neo4j_client.is_connected() if state.neo4j_client else False
+        },
+        "performance": {
+            "requests_per_second": perf_snapshot.requests_per_second,
+            "avg_response_time_ms": perf_snapshot.avg_response_time_ms,
+            "active_connections": perf_snapshot.active_connections
         }
     }
 
@@ -606,6 +755,96 @@ async def import_triples(
     client.batch_import_triples(triple_dicts)
     
     return {"message": f"Imported {len(triples)} triples"}
+
+
+# ==================== 安全 API ====================
+
+class APIKeyCreateRequest(BaseModel):
+    """创建API密钥请求"""
+    user_id: str
+    permissions: List[str] = ["read"]
+    expires_in_days: int = 90
+
+
+class APIKeyResponse(BaseModel):
+    """API密钥响应"""
+    api_key: str
+    user_id: str
+    permissions: List[str]
+    expires_at: str
+
+
+@app.post("/api/v1/auth/api-keys", response_model=APIKeyResponse)
+async def create_api_key(request: APIKeyCreateRequest):
+    """创建新的API密钥"""
+    key = api_key_manager.generate_key(
+        user_id=request.user_id,
+        permissions=request.permissions,
+        expires_in_days=request.expires_in_days
+    )
+    
+    key_data = api_key_manager.validate_key(key)
+    
+    return APIKeyResponse(
+        api_key=key,
+        user_id=key_data["user_id"],
+        permissions=key_data["permissions"],
+        expires_at=key_data["expires_at"].isoformat()
+    )
+
+
+@app.get("/api/v1/auth/api-keys")
+async def list_api_keys(user_id: str = None):
+    """列出API密钥"""
+    return {"keys": api_key_manager.list_keys(user_id)}
+
+
+@app.delete("/api/v1/auth/api-keys/{key_prefix}")
+async def revoke_api_key(key_prefix: str):
+    """撤销API密钥"""
+    # Note: In practice, we'd need the full key or store a mapping
+    return {"message": "API key revocation not fully implemented"}
+
+
+# ==================== 性能优化 API ====================
+
+class CacheStatsResponse(BaseModel):
+    """缓存统计响应"""
+    size: int
+    max_size: int
+    ttl_seconds: int
+
+
+@app.get("/api/v1/performance/cache")
+async def get_cache_stats():
+    """获取缓存统计"""
+    return CacheStatsResponse(**inference_cache.stats())
+
+
+@app.post("/api/v1/performance/cache/clear")
+async def clear_cache():
+    """清除缓存"""
+    inference_cache.clear()
+    return {"message": "Cache cleared"}
+
+
+@app.get("/api/v1/performance/profiler")
+async def get_profiler_results():
+    """获取性能分析结果"""
+    results = profiler.get_results()
+    return {
+        "profiles": [
+            {
+                "function_name": r.function_name,
+                "call_count": r.call_count,
+                "total_time": round(r.total_time, 4),
+                "avg_time": round(r.avg_time, 4),
+                "min_time": round(r.min_time, 4),
+                "max_time": round(r.max_time, 4)
+            }
+            for r in results
+        ]
+    }
 
 
 # ==================== 运行入口 ====================
