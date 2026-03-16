@@ -84,23 +84,25 @@
 
 #### 1.1.5 运营与数据
 
-| 概念 | 英文 | 定义 | 计算方式/说明 |
-|------|------|------|---------------|
-| 票房 | Box Office | 电影票销售总收入 | 累计票房金额（含线上线下） |
-| 收视率 | TV Rating | 电视剧/综艺节目观看人数占比 | 观看人数 / 目标观众总数 × 100% |
-| 播放量 | View Count | 网络视听内容播放次数 | 累计播放次数（去重） |
-| 热度指数 | Popularity Index | 内容社交媒体讨论热度 | 微博/抖音/豆瓣等平台声量加权 |
-| 豆瓣评分 | Douban Rating | 豆瓣平台用户评分 | 1-10分制，加权平均 |
-| IMDb评分 | IMDb Rating | IMDB平台用户评分 | 1-10分制 |
-| 猫眼评分 | Maoyan Rating | 猫眼平台用户评分 | 1-10分制 |
-| 淘票票评分 | Taopiaopiao Rating | 淘票票平台用户评分 | 1-10分制 |
-| 市场份额 | Market Share | 票房/播放量占比 | 该作品票房 / 同期总票房 × 100% |
-| 上座率 | Occupancy Rate | 影院座位占用比例 | 观影人次 / 可放映场次座位数 × 100% |
-| 场均人次 | Per-Screening Attendance | 每场平均观影人数 | 总观影人次 / 总场次 |
-| 完播率 | Completion Rate | 用户完整观看比例 | 完整观看人数 / 总播放人数 × 100% |
-| 互动率 | Engagement Rate | 用户互动行为比例 | 互动数（点赞+评论+转发）/ 播放量 × 100% |
-| 衍生收入 | Ancillary Revenue | 影视衍生收入 | 版权销售 + 衍生品 + 广告分成 |
-| 投资回报率 | ROI | 影视投资收益 | （总收入 - 投资成本）/ 投资成本 × 100% |
+| 实体ID | 概念 | 英文 | 定义 | 计算方式/说明 |
+|--------|------|------|------|---------------|
+| cinema_box_office | 票房 | Box Office | 电影票销售总收入 | 累计票房金额（含线上线下） |
+| cinema_tv_rating | 收视率 | TV Rating | 电视剧/综艺节目观看人数占比 | 观看人数 / 目标观众总数 × 100% |
+| cinema_view_count | 播放量 | View Count | 网络视听内容播放次数 | 累计播放次数（去重） |
+| cinema_popularity_index | 热度指数 | Popularity Index | 内容社交媒体讨论热度 | 微博/抖音/豆瓣等平台声量加权 |
+| cinema_douban_rating | 豆瓣评分 | Douban Rating | 豆瓣平台用户评分 | 1-10分制，加权平均 |
+| cinema_imdb_rating | IMDb评分 | IMDb Rating | IMDB平台用户评分 | 1-10分制 |
+| cinema_maoyan_rating | 猫眼评分 | Maoyan Rating | 猫眼平台用户评分 | 1-10分制 |
+| cinema_taopiaopiao_rating | 淘票票评分 | Taopiaopiao Rating | 淘票票平台用户评分 | 1-10分制 |
+| cinema_market_share | 市场份额 | Market Share | 票房/播放量占比 | 该作品票房 / 同期总票房 × 100% |
+| cinema_occupancy_rate | 上座率 | Occupancy Rate | 影院座位占用比例 | 观影人次 / 可放映场次座位数 × 100% |
+| cinema_per_screening | 场均人次 | Per-Screening Attendance | 每场平均观影人数 | 总观影人次 / 总场次 |
+| cinema_completion_rate | 完播率 | Completion Rate | 用户完整观看比例 | 完整观看人数 / 总播放人数 × 100% |
+| cinema_engagement_rate | 互动率 | Engagement Rate | 用户互动行为比例 | 互动数（点赞+评论+转发）/ 播放量 × 100% |
+| cinema_ancillary_revenue | 衍生收入 | Ancillary Revenue | 影视衍生收入 | 版权销售 + 衍生品 + 广告分成 |
+| cinema_roi | 投资回报率 | ROI | 影视投资收益 | （总收入 - 投资成本）/ 投资成本 × 100% |
+| cinema_cpm | 千次播放成本 | CPM | 广告投放成本 | 广告费用 / 播放量(千次) × 1000 |
+| cinema_retention_rate | 留存率 | Retention Rate | 用户续费/续看比例 | 续费用户数 / 总用户数 × 100% |
 
 ### 1.2 关系定义
 
@@ -231,6 +233,47 @@
     └── 按技术
         ├── 2D动画
         └── 3D动画
+│
+├── 微短剧
+│   ├── 按时长
+│   │   ├── 3分钟以内
+│   │   ├── 3-10分钟
+│   │   └── 10-30分钟
+│   ├── 按题材
+│   │   ├── 甜宠
+│   │   ├── 虐恋
+│   │   ├── 复仇
+│   │   ├── 职场
+│   │   └── 悬疑
+│   ├── 按播出平台
+│   │   ├── 抖音短剧
+│   │   ├── 快手短剧
+│   │   ├── 微信短剧
+│   │   └── 平台定制短剧
+│   └── 按付费模式
+│       ├── 免费短剧
+│       ├── 付费短剧
+│       └── 会员专享
+│
+├── 互动电影
+│   ├── 按交互方式
+│   │   ├── 选择分支剧情
+│   │   ├── 360度视角
+│   │   └── 实时投票
+│   └── 按平台
+│       ├── Netflix互动
+│       ├── 平台定制互动
+│       └── 线下互动体验
+│
+└── VR/AR影视
+    ├── 按技术
+    │   ├── VR影视
+    │   ├── AR影视
+    │   └── MR影视
+    └── 按内容形态
+        ├── VR纪录片
+        ├── VR剧情片
+        └── 沉浸式体验
 ```
 
 ---
@@ -264,6 +307,16 @@
 | 版权状态 | Copyright Status | 枚举 | 版权归属状态 | "自有", "授权", "到期" |
 | 播出平台 | Streaming Platform | 字符串数组 | 播出平台 | ["爱奇艺", "Netflix"] |
 | 会员专享 | VIP Only | 布尔 | 是否会员专享 | true/false |
+| 付费模式 | Payment Model | 枚举 | 付费模式 | "免费", "付费", "会员", "单点" |
+| IP来源 | IP Source | 字符串 | IP来源 | "原创", "小说", "漫画", "游戏", "综艺" |
+| 审核状态 | Review Status | 枚举 | 审核状态 | "待审核", "已过审", "未通过", "整改中" |
+| 完结状态 | Completion Status | 枚举 | 完结状态 | "连载中", "已完结", "已下架" |
+| 首播日期 | Premiere Date | 日期 | 首播日期 | "2024-01-15" |
+| 完结日期 | End Date | 日期 | 完结日期 | "2024-03-20" |
+| 总投资 | Total Investment | 整数 | 总投资额（万元） | 80000 |
+| 招商金额 | Ad Revenue | 整数 | 广告招商金额（万元） | 30000 |
+| 衍生品收入 | Merchandise Revenue | 整数 | 衍生品收入（万元） | 15000 |
+| 版权销售 | License Revenue | 整数 | 版权销售收入（万元） | 50000 |
 
 ### 2.2 人物属性
 
@@ -287,6 +340,14 @@
 | 擅长类型 | Genre Expertise | 字符串数组 | 擅长领域 | ["古装", "动作"] |
 | 粉丝数量 | Fan Count | 整数 | 粉丝数 | 10000000 |
 | 商业价值 | Commercial Value | 整数 | 代言费(万元/年) | 2000 |
+| 微博粉丝 | Weibo Fans | 整数 | 微博粉丝数 | 5000000 |
+| 抖音粉丝 | Douyin Fans | 整数 | 抖音粉丝数 | 8000000 |
+| 小红书粉丝 | Xiaohongshu Fans | 整数 | 小红书粉丝数 | 2000000 |
+| 工作室 | Studio | 字符串 | 个人工作室 | "陈凯歌工作室" |
+| 经纪合约 | Agency Contract | 字符串 | 经纪合约状态 | "自有", "签约", "解约" |
+| 票房号召力 | Box Office Appeal | 整数 | 累计票房（亿元） | 150 |
+| 演技标签 | Acting Tags | 字符串数组 | 演技特点 | ["细腻", "爆发力", "多变"] |
+| 商业代言 | Brand Endorsements | 字符串数组 | 品牌代言 | ["LV", "苹果", "可口可乐"] |
 
 ### 2.3 机构属性
 
