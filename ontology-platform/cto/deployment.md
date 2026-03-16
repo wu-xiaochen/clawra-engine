@@ -1087,3 +1087,54 @@ inhibit_rules:
 
 **文档状态**: 已完成  
 **下次更新**: 根据实际部署经验补充
+
+---
+
+## 附录：快速开始
+
+### 本地开发
+
+```bash
+# 克隆项目
+git clone https://github.com/wu-xiaochen/ontology-platform.git
+cd ontology-platform
+
+# 启动开发环境（自动启动API + Redis）
+docker-compose up -d
+
+# 访问API
+curl http://localhost:8000/api/v1/health
+
+# 查看日志
+docker-compose logs -f api
+
+# 停止服务
+docker-compose down
+```
+
+### 生产部署
+
+```bash
+# 1. 配置环境变量
+cp .env.example .env
+# 编辑 .env 填入实际配置
+
+# 2. 启动服务
+VERSION=v1.0.0 docker-compose -f docker-compose.prod.yml up -d
+
+# 3. 检查状态
+docker-compose -f docker-compose.prod.yml ps
+
+# 4. 查看日志
+docker-compose -f docker-compose.prod.yml logs -f api
+```
+
+### GitHub Actions 自动部署
+
+1. 在 GitHub 仓库 Settings → Secrets 中配置：
+   - `SSH_HOST_STAGING` / `SSH_KEY_STAGING` - Staging服务器
+   - `SSH_HOST_PROD` / `SSH_KEY_PROD` - 生产服务器
+   
+2. 在 GitHub Actions 中手动触发 CD workflow：
+   - 输入版本号（如 `v1.0.0`）
+   - 自动部署到 Staging → 验证 → 生产

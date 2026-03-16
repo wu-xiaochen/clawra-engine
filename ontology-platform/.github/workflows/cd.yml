@@ -4,6 +4,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: false
+        type: string
 
 env:
   REGISTRY: ghcr.io
@@ -40,6 +45,7 @@ jobs:
             type=ref,event=branch
             type=sha,prefix=
             type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ github.event.inputs.version }},enable={{is_default_branch}}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
@@ -51,40 +57,116 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  deploy:
-    name: Deploy
+      - name: Create deployment artifact
+        run: |
+          IMAGE_TAG=${{ github.event.inputs.version || github.sha }}
+          echo "IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$IMAGE_TAG" >> $GITHUB_ENV
+
+  deploy-staging:
+    name: Deploy to Staging
     runs-on: ubuntu-latest
     needs: build-and-push
-    if: github.ref == 'refs/heads/main'
+    if: github.event.inputs.version != ''
+    environment: staging
+
+    steps:
+      - name: Deploy to staging server
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST_STAGING }}
+          SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
+          SSH_KEY: ${{ secrets.SSH_KEY_STAGING }}
+          IMAGE_TAG: ${{ github.event.inputs.version || github.sha }}
+        run: |
+          echo "Deploying to staging..."
+          
+          # SSH部署脚本
+          ssh -o StrictHostKeyChecking=no -i /tmp/staging_key $SSH_USERNAME@$SSH_HOST << 'EOF'
+            export IMAGE_TAG=$IMAGE_TAG
+            cd /opt/ontology-platform
+            
+            # Pull latest image
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$IMAGE_TAG
+            
+            # Update docker-compose
+            export VERSION=$IMAGE_TAG
+            docker-compose up -d
+            
+            # Health check
+            sleep 15
+            curl -f http://localhost:8000/api/v1/health || exit 1
+            
+            echo "Staging deployment completed!"
+          EOF
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.event.inputs.version != ''
     environment: production
 
     steps:
-      - name: Deploy to server
+      - name: Deploy to production server
         env:
-          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_HOST: ${{ secrets.SSH_HOST_PROD }}
           SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
-          SSH_KEY: ${{ secrets.SSH_KEY }}
-          IMAGE_TAG: ${{ github.sha }}
+          SSH_KEY: ${{ secrets.SSH_KEY_PROD }}
+          IMAGE_TAG: ${{ github.event.inputs.version || github.sha }}
         run: |
-          echo "Deploying image ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$IMAGE_TAG"
+          echo "Deploying to production..."
           
-          # 示例部署脚本 - 根据实际需求修改
-          # ssh -o StrictHostKeyChecking=no $SSH_USERNAME@$SSH_HOST << 'EOF'
-          #   docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$IMAGE_TAG
-          #   docker stop ontology-platform || true
-          #   docker rm ontology-platform || true
-          #   docker run -d --name ontology-platform \
-          #     -p 8000:8000 \
-          #     --restart unless-stopped \
-          #     ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$IMAGE_TAG
-          # EOF
-          
-          echo "Deployment completed!"
+          # SSH部署脚本
+          ssh -o StrictHostKeyChecking=no -i /tmp/prod_key $SSH_USERNAME@$SSH_HOST << 'EOF'
+            export IMAGE_TAG=$IMAGE_TAG
+            cd /opt/ontology-platform
+            
+            # Backup database
+            docker-compose exec -T db pg_dump -U ontology ontology > /backup/ontology_$(date +%Y%m%d_%H%M%S).sql
+            
+            # Pull latest image
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$IMAGE_TAG
+            
+            # Rolling update
+            docker-compose up -d --scale api=4
+            sleep 10
+            
+            # Health check
+            curl -f http://localhost:8000/api/v1/health || exit 1
+            
+            # Scale down to normal
+            docker-compose up -d --scale api=2
+            
+            echo "Production deployment completed!"
+          EOF
 
-      - name: Health Check
+      - name: Create GitHub Release
+        if: github.event.inputs.version != ''
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.event.inputs.version }}
+          release_name: Release ${{ github.event.inputs.version }}
+          draft: false
+          prerelease: false
+
+  notify:
+    name: Notify
+    runs-on: ubuntu-latest
+    needs: [deploy-staging, deploy-production]
+    if: always()
+
+    steps:
+      - name: Send deployment notification
         run: |
-          # 等待服务启动
-          sleep 10
-          # 检查服务健康状态
-          # curl -f https://your-domain.com/health || exit 1
-          echo "Health check passed!"
+          STATUS="✅ Success"
+          if [ "${{ needs.deploy-production.result }}" == "failed" ]; then
+            STATUS="❌ Failed"
+          fi
+          
+          echo "Deployment $STATUS"
+          
+          # 可集成飞书/Slack/邮件通知
+          # curl -X POST -H 'Content-Type: application/json' \
+          #   -d "{\"text\": \"Ontology Platform Deployment: $STATUS\"}" \
+          #   ${{ secrets.WEBHOOK_URL }}

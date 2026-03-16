@@ -135,31 +135,59 @@ python cli.py --help
 
 ## Docker 部署
 
-### 构建镜像
+### 开发环境
+
+使用 Docker Compose 启动本地开发环境：
 
 ```bash
-docker build -t ontology-platform .
+# 克隆项目
+git clone https://github.com/wu-xiaochen/ontology-platform.git
+cd ontology-platform
+
+# 启动开发环境
+docker-compose up -d
+
+# 查看日志
+docker-compose logs -f api
+
+# 停止服务
+docker-compose down
 ```
 
-### 运行容器
+这将启动：
+- ontology-platform API 服务 (端口 8000)
+- Redis 缓存 (端口 6379)
+
+### 生产环境
 
 ```bash
+# 复制环境变量配置
+cp .env.example .env
+
+# 编辑 .env 文件，填入实际配置值
+
+# 启动生产环境
+VERSION=v1.0.0 docker-compose -f docker-compose.prod.yml up -d
+
+# 查看日志
+docker-compose -f docker-compose.prod.yml logs -f api
+
+# 停止服务
+docker-compose -f docker-compose.prod.yml down
+```
+
+### 手动构建和运行
+
+```bash
+# 构建镜像
+docker build -t ontology-platform .
+
+# 运行容器
 docker run -d -p 8000:8000 \
   --env REDIS_HOST=redis \
   --env NEO4J_URI=bolt://neo4j:7687 \
   ontology-platform
 ```
-
-### 使用 Docker Compose
-
-```bash
-docker-compose up -d
-```
-
-这将启动：
-- ontology-platform API 服务
-- Redis 缓存
-- Neo4j 图数据库
 
 ## 核心模块
 
