@@ -130,7 +130,157 @@ git merge --no-ff hotfix/v1.2.1
 
 ---
 
-## 3. CHANGELOG (变更日志)
+## 3. 版本兼容性 (Version Compatibility)
+
+### 兼容性类型
+
+| 类型 | 说明 | 范围 |
+|------|------|------|
+| **API 兼容性** | REST API 接口的向后兼容性 | MINOR 版本内保证 |
+| **数据兼容性** | 数据库 schema、存储格式变化 | MINOR 版本内保证 |
+| **协议兼容性** | 客户端-服务器通信协议 | MAJOR 版本内保证 |
+| **功能兼容性** | 命令行参数、环境变量 | MINOR 版本内保证 |
+
+### API 兼容性规则
+
+```python
+# ✅ 兼容的变更 (MINOR/PATCH)
+- 新增可选参数
+- 新增 API 端点
+- 扩展返回字段（不删除现有字段）
+- 修改非关键错误信息
+
+# ❌ 不兼容的变更 (MAJOR)
+- 删除或重命名端点
+- 删除或重命名参数
+- 修改参数类型
+- 改变响应格式结构
+- 修改必需/可选状态
+```
+
+### 数据迁移策略
+
+```yaml
+# 版本升级数据迁移
+migration_policy:
+  # 自动迁移 (Minor 版本)
+  auto_migrate:
+    - 索引优化
+    - 缓存结构调整
+    - 元数据更新
+  
+  # 手动迁移 (Major 版本)
+  manual_migration:
+    - schema 变更
+    - 数据格式转换
+    - 迁移脚本执行
+    - 回滚方案准备
+
+# 兼容性保证
+backward_compatibility:
+  # 数据保留期限
+  data_retention: "3个版本"
+  
+  # 配置兼容
+  config_compat: "自动合并旧配置"
+```
+
+### 弃用策略 (Deprecation)
+
+```markdown
+## 弃用周期
+
+| 弃用类型 | 通知时机 | 移除时机 |
+|----------|----------|----------|
+| API 端点 | 首次发布弃用时 | 下一个 MAJOR 版本 |
+| 参数/字段 | 首次发布弃用时 | 2个 MINOR 版本后 |
+| 功能特性 | 首次发布弃用时 | 下一个 MAJOR 版本 |
+
+## 弃用标记示例
+
+```python
+# Python 弃用警告
+import warnings
+
+def legacy_api():
+    warnings.warn(
+        "legacy_api() 将在 2.0.0 版本移除，请使用 new_api()",
+        DeprecationWarning,
+        stacklevel=2
+    )
+```
+
+### 向后兼容性测试
+
+```yaml
+# .github/workflows/compatibility-test.yml
+name: Compatibility Tests
+
+on:
+  pull_request:
+    branches: [develop, main]
+
+jobs:
+  compatibility:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # 测试最近 3 个版本
+        version: [current, current-1, current-2]
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run API Compatibility Tests
+        run: |
+          # 测试 API 向后兼容
+          pytest tests/api_compat/
+          
+      - name: Run Schema Compatibility Tests
+        run: |
+          # 测试数据库 schema 兼容
+          pytest tests/schema_compat/
+```
+
+### 客户端版本匹配
+
+```markdown
+## 客户端兼容性矩阵
+
+| 服务器版本 | 支持的客户端版本 |
+|------------|-------------------|
+| 2.x | 2.x, 1.x (部分) |
+| 1.x | 1.x |
+| 0.x | 0.x |
+
+## 版本探测
+
+```bash
+# 客户端版本检查
+curl -s https://api.example.com/v1/version
+# 返回: {"version": "1.2.0", "min_client_version": "1.0.0"}
+```
+
+### 版本降级策略
+
+```markdown
+## 不支持降级
+
+⚠️ **重要**: 不支持从高版本降级到低版本。
+如需降级，请重新安装对应版本并恢复备份数据。
+
+## 降级场景处理
+
+| 场景 | 推荐方案 |
+|------|----------|
+| 新版本有严重 bug | 等待 patch 版本或使用 hotfix |
+| 需要回滚功能 | 使用版本控制恢复代码 |
+| 数据兼容问题 | 恢复数据库备份 |
+```
+
+---
+
+## 4. CHANGELOG (变更日志)
 
 ### CHANGELOG 格式
 
