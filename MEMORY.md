@@ -89,6 +89,53 @@
 
 ## 📊 今日更新 (2026-03-16)
 
+### ⚠️ 反思：子任务阻塞主session问题
+
+**问题**：2026-03-16 下午大量spawn子任务构建本体，导致：
+1. 主session被顶出，用户无法交流
+2. 子任务堆积，部分超时
+
+**根因**：
+- 主session内直接spawn太多subagent
+- 未使用 isolated session 模式
+- 任务太密集，3分钟一个
+
+**解决方案**：
+1. ** heavyweight任务 → isolated session + cron**
+   - 使用 `sessionTarget: "isolated"` 避免阻塞主session
+   - cron 定时执行批量任务
+2. **主session保持空闲**
+   - 只用于实时交互，不做长时任务
+3. **任务完成后主动汇报**
+   - 通过 subagent_announce 推送结果
+
+---
+
+### 本体库大丰收 (2026-03-16 下午)
+
+**成果**：54+ 领域本体！
+
+| 领域 | 状态 | 备注 |
+|------|------|------|
+| 约会 Dating | ✅ | 完整版 |
+| 采购供应链 Supply Chain | ✅ | 27KB, v1.0 |
+| 搬家 Relocation | ✅ | 460行 |
+| 茶叶 Tea | ✅ | 18KB, 14章 |
+| 育儿 Childcare | ✅ | 11大类 |
+| 养老 Eldercare | ✅ | 8大类 |
+| 家具 Furniture | ✅ | 7大类 |
+| 摄影 Photography | ✅ | 629行 |
+| 人力资源 HR | ✅ | v1.1 扩展 |
+| 网络安全 Security | ✅ | 629行 |
+| 汽车 Automotive | ✅ | 10KB |
+| 银行 Banking | ✅ | 27KB, 完整版 |
+| 电影 Cinema | ✅ | 多次确认完整 |
+| ... | +40+ | 农业/航空/区块链/医疗/金融等 |
+
+**文件位置**：`ontology-platform/domain_expert/`
+
+---
+
 ### ontology-clawra v3.2 完成
 - 燃气调压箱选型推理 ✅
 - 燃气报警器选型推理 ✅
