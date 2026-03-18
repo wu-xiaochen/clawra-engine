@@ -387,25 +387,27 @@ setup_exception_handlers(app)
 # ==================== GraphQL API (v3.3新增) ====================
 
 if GRAPHQL_AVAILABLE:
-    from strawberry.fastapi import GraphQLRouter
-    
-    @asynccontextmanager
-    async def graphql_context(app: FastAPI):
-        """GraphQL上下文"""
-        yield {
-            "rdf_adapter": state.rdf_adapter,
-            "neo4j_client": state.neo4j_client,
-            "reasoner": state.reasoner,
-            "confidence_calculator": state.confidence_calculator
-        }
-    
-    graphql_router = GraphQLRouter(
-        graphql_schema,
-        context_getter=graphql_context,
-        prefix="/graphql"
-    )
-    app.include_router(graphql_router)
-    logger.info("GraphQL endpoint added at /api/graphql/graphql")
+    try:
+        from strawberry.fastapi import GraphQLRouter
+        
+        @asynccontextmanager
+        async def graphql_context(app: FastAPI):
+            """GraphQL上下文"""
+            yield {
+                "rdf_adapter": state.rdf_adapter,
+                "neo4j_client": state.neo4j_client,
+                "reasoner": state.reasoner,
+                "confidence_calculator": state.confidence_calculator
+            }
+        
+        graphql_router = GraphQLRouter(
+            graphql_schema,
+            context_getter=graphql_context,
+        )
+        app.include_router(graphql_router, prefix="/api/graphql")
+        logger.info("GraphQL endpoint added at /api/graphql/graphql")
+    except Exception as e:
+        logger.warning(f"GraphQL router setup failed: {e}")
 
 
 # ==================== Custom OpenAPI Schema ====================

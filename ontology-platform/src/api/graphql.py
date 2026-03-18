@@ -11,6 +11,7 @@ GraphQL API Schema and Resolvers
 """
 
 import logging
+import json
 from typing import List, Optional, Dict, Any
 from dataclasses import dataclass
 
@@ -86,7 +87,7 @@ class OntologyPropertyType:
 class GraphNodeType:
     id: str
     labels: List[str]
-    properties: Dict[str, Any]
+    properties: str  # JSON string
     confidence: float
 
 
@@ -96,7 +97,7 @@ class GraphRelationshipType:
     type: str
     start_node: str
     end_node: str
-    properties: Dict[str, Any]
+    properties: str  # JSON string
     confidence: float
 
 
@@ -116,7 +117,7 @@ class ConfidenceResultType:
     value: float
     method: str
     evidence_count: int
-    details: Dict[str, Any]
+    details: str  # JSON string
 
 
 @strawberry.type(description="推理链路径")
@@ -220,7 +221,7 @@ class Query:
         return GraphNodeType(
             id=node.id or "",
             labels=node.labels,
-            properties=node.properties,
+            properties=json.dumps(node.properties),
             confidence=node.confidence
         )
     
@@ -240,7 +241,7 @@ class Query:
             GraphNodeType(
                 id=n.id or "",
                 labels=n.labels,
-                properties=n.properties,
+                properties=json.dumps(n.properties),
                 confidence=n.confidence
             )
             for n in results
@@ -293,12 +294,13 @@ class Query:
         max_depth: int = 3,
         method: str = "multiplicative",
         info: Info = None
-    ) -> Dict[str, float]:
+    ) -> str:
         adapter = getattr(info.context, "rdf_adapter", None)
         if not adapter:
-            return {}
+            return "{}"
         
-        return adapter.propagate_confidence(start_entity, max_depth, method)
+        result = adapter.propagate_confidence(start_entity, max_depth, method)
+        return json.dumps(result)
     
     @strawberry.field(description="推理链追溯")
     def trace_inference(
@@ -320,7 +322,7 @@ class Query:
                 GraphNodeType(
                     id=n.get("id", ""),
                     labels=n.get("labels", []),
-                    properties=n.get("properties", {}),
+                    properties=json.dumps(n.get("properties", {})),
                     confidence=n.get("confidence", 1.0)
                 )
                 for n in path.get("nodes", [])
@@ -331,7 +333,7 @@ class Query:
                     type=r.get("type", ""),
                     start_node=r.get("start_node", ""),
                     end_node=r.get("end_node", ""),
-                    properties=r.get("properties", {}),
+                    properties=json.dumps(r.get("properties", {})),
                     confidence=r.get("confidence", 1.0)
                 )
                 for r in path.get("relationships", [])
@@ -357,7 +359,7 @@ class Mutation:
         self,
         name: str,
         label: str = "Entity",
-        properties: Dict[str, Any] = strawberry.field(default_factory=dict),
+        properties: str = "{}",  # JSON string
         confidence: float = 1.0,
         info: Info = None
     ) -> Optional[GraphNodeType]:
@@ -365,14 +367,15 @@ class Mutation:
         if not client:
             return None
         
-        node = client.create_entity(name, label, properties, confidence)
+        props = json.loads(properties) if properties else {}
+        node = client.create_entity(name, label, props, confidence)
         if not node:
             return None
         
         return GraphNodeType(
             id=node.id or "",
             labels=node.labels,
-            properties=node.properties,
+            properties=json.dumps(node.properties),
             confidence=node.confidence
         )
     
@@ -382,7 +385,7 @@ class Mutation:
         start_entity: str,
         end_entity: str,
         relationship_type: str,
-        properties: Dict[str, Any] = strawberry.field(default_factory=dict),
+        properties: str = "{}",  # JSON string
         confidence: float = 1.0,
         info: Info = None
     ) -> Optional[GraphRelationshipType]:
@@ -390,8 +393,9 @@ class Mutation:
         if not client:
             return None
         
+        props = json.loads(properties) if properties else {}
         rel = client.create_relationship(
-            start_entity, end_entity, relationship_type, properties, confidence
+            start_entity, end_entity, relationship_type, props, confidence
         )
         if not rel:
             return None
@@ -401,7 +405,7 @@ class Mutation:
             type=rel.type,
             start_node=rel.start_node,
             end_node=rel.end_node,
-            properties=rel.properties,
+            properties=json.dumps(rel.properties),
             confidence=rel.confidence
         )
     
@@ -455,7 +459,7 @@ class Mutation:
     @strawberry.mutation(description="计算置信度")
     def calculate_confidence(
         self,
-        evidence: List[Dict[str, Any]],
+        evidence: str = "[]",  # JSON string of list
         method: str = "weighted",
         info: Info = None
     ) -> ConfidenceResultType:
@@ -465,8 +469,11 @@ class Mutation:
                 value=0.0,
                 method=method,
                 evidence_count=0,
-                details={}
+                details="{}"
             )
+        
+        import json
+        evidence_list_data = json.loads(evidence) if evidence else []
         
         from src.confidence import Evidence
         evidence_list = [
@@ -475,7 +482,7 @@ class Mutation:
                 reliability=e.get("reliability", 0.5),
                 content=e.get("content", "")
             )
-            for e in evidence
+            for e in evidence_list_data
         ]
         
         result = calc.calculate(evidence_list, method)
@@ -484,7 +491,7 @@ class Mutation:
             value=result.value,
             method=result.method,
             evidence_count=result.evidence_count,
-            details=result.details
+            details=json.dumps(result.details)
         )
 
 
