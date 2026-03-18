@@ -69,6 +69,25 @@ from src.performance import (
 )
 from src.export import DataExporter, ExportFormat, ExportOptions, data_exporter
 from src.permissions import permission_manager, Permission, Resource, ResourceType
+
+# 定义logger用于模块级导入错误
+_import_logger = logging.getLogger(__name__)
+
+# 导入GraphQL (v3.3新增)
+try:
+    from src.api.graphql import schema as graphql_schema
+    GRAPHQL_AVAILABLE = True
+except ImportError as e:
+    GRAPHQL_AVAILABLE = False
+    _import_logger.warning(f"GraphQL not available: {e}")
+
+# 导入主动学习引擎 (v3.3新增)
+try:
+    from src.ontology.auto_learn import auto_learn_engine, AutoLearnEngine, ConfidenceLevel
+    AUTO_LEARN_AVAILABLE = True
+except ImportError as e:
+    AUTO_LEARN_AVAILABLE = False
+    _import_logger.warning(f"Auto-learn engine not available: {e}")
 from src.caching import query_cache, debug_cache, create_cache
 
 # 导入错误处理和缓存策略
@@ -364,6 +383,29 @@ setup_app_metrics(app)
 
 # 注册异常处理器
 setup_exception_handlers(app)
+
+# ==================== GraphQL API (v3.3新增) ====================
+
+if GRAPHQL_AVAILABLE:
+    from strawberry.fastapi import GraphQLRouter
+    
+    @asynccontextmanager
+    async def graphql_context(app: FastAPI):
+        """GraphQL上下文"""
+        yield {
+            "rdf_adapter": state.rdf_adapter,
+            "neo4j_client": state.neo4j_client,
+            "reasoner": state.reasoner,
+            "confidence_calculator": state.confidence_calculator
+        }
+    
+    graphql_router = GraphQLRouter(
+        graphql_schema,
+        context_getter=graphql_context,
+        prefix="/graphql"
+    )
+    app.include_router(graphql_router)
+    logger.info("GraphQL endpoint added at /api/graphql/graphql")
 
 
 # ==================== Custom OpenAPI Schema ====================
@@ -682,6 +724,41 @@ async def query_ontology(
     }
 
 
+# ==================== SPARQL & Export API (v3.3新增) ====================
+
+class SparqlRequest(BaseModel):
+    """SPARQL查询请求"""
+    query: str
+
+
+@app.post("/api/v1/sparql")
+async def execute_sparql(
+    request: SparqlRequest,
+    adapter: RDFAdapter = Depends(get_rdf_adapter)
+):
+    """执行SPARQL查询"""
+    results = adapter.sparql_query(request.query)
+    return {"results": results, "count": len(results)}
+
+
+@app.get("/api/v1/export/turtle")
+async def export_turtle(adapter: RDFAdapter = Depends(get_rdf_adapter)):
+    """导出Turtle格式"""
+    return {"format": "turtle", "content": adapter.to_turtle()}
+
+
+@app.get("/api/v1/export/jsonld")
+async def export_jsonld(adapter: RDFAdapter = Depends(get_rdf_adapter)):
+    """导出JSON-LD格式"""
+    return adapter.to_jsonld()
+
+
+@app.get("/api/v1/export/rdfxml")
+async def export_rdfxml(adapter: RDFAdapter = Depends(get_rdf_adapter)):
+    """导出RDF/XML格式"""
+    return {"format": "rdfxml", "content": adapter.to_rdfxml()}
+
+
 @app.get("/api/v1/triples")
 async def list_triples(
     subject: Optional[str] = Query(None),
@@ -943,6 +1020,124 @@ async def get_stats(
         "graph": neo4j_stats,
         "timestamp": datetime.now().isoformat()
     }
+
+
+# ==================== 主动学习 API (v3.3新增) ====================
+
+class ExtractRequest(BaseModel):
+    """抽取请求"""
+    text: str = Field(..., description="要抽取的文本")
+
+
+class ConfidenceUpgradeRequest(BaseModel):
+    """置信度升级请求"""
+    entity_name: str
+    from_level: str = Field(default="ASSUMED", description="当前置信度级别")
+    to_level: str = Field(default="CONFIRMED", description="目标置信度级别")
+
+
+class SuggestionRequest(BaseModel):
+    """建议请求"""
+    query: str
+    failed_concepts: List[str] = Field(default_factory=list)
+
+
+if AUTO_LEARN_AVAILABLE:
+    @app.post("/api/v1/auto-learn/extract")
+    async def extract_entities(request: ExtractRequest):
+        """从文本中抽取实体"""
+        entities = auto_learn_engine.extract_from_text(request.text)
+        relations = auto_learn_engine.extract_relations(
+            request.text, entities
+        )
+        
+        return {
+            "entities": [
+                {
+                    "type": e.entity_type.value,
+                    "name": e.name,
+                    "properties": e.properties,
+                    "confidence": e.confidence.value
+                }
+                for e in entities
+            ],
+            "relations": [
+                {
+                    "type": r.relation_type,
+                    "subject": r.subject,
+                    "object": r.object,
+                    "confidence": r.confidence.value
+                }
+                for r in relations
+            ],
+            "entity_count": len(entities),
+            "relation_count": len(relations)
+        }
+    
+    @app.post("/api/v1/auto-learn/save")
+    async def save_extracted(
+        request: ExtractRequest,
+    ):
+        """保存抽取的实体到本体"""
+        entities = auto_learn_engine.extract_from_text(request.text)
+        relations = auto_learn_engine.extract_relations(
+            request.text, entities
+        )
+        
+        result = auto_learn_engine.save_to_ontology(entities, relations)
+        
+        return {
+            "success": True,
+            **result
+        }
+    
+    @app.post("/api/v1/auto-learn/upgrade-confidence")
+    async def upgrade_confidence(request: ConfidenceUpgradeRequest):
+        """升级实体置信度"""
+        from_level = ConfidenceLevel(request.from_level)
+        to_level = ConfidenceLevel(request.to_level)
+        
+        success = auto_learn_engine.upgrade_confidence(from_level, to_level)
+        
+        return {
+            "entity_name": request.entity_name,
+            "from_level": request.from_level,
+            "to_level": request.to_level,
+            "upgraded": success
+        }
+    
+    @app.post("/api/v1/auto-learn/suggest")
+    async def suggest_supplement(request: SuggestionRequest):
+        """获取本体补充建议"""
+        suggestions = auto_learn_engine.suggest_supplement(
+            request.query,
+            request.failed_concepts
+        )
+        
+        return {
+            "query": request.query,
+            "suggestions": suggestions
+        }
+    
+    @app.get("/api/v1/auto-learn/stats")
+    async def get_learn_stats():
+        """获取学习引擎统计"""
+        return auto_learn_engine.get_stats()
+    
+    @app.get("/api/v1/auto-learn/log")
+    async def get_extraction_log(limit: int = Query(100, ge=1, le=1000)):
+        """获取抽取日志"""
+        return {
+            "log": auto_learn_engine.get_extraction_log(limit)
+        }
+    
+    @app.get("/api/v1/auto-learn/high-frequency")
+    async def get_high_frequency_entities(threshold: int = Query(3, ge=1, le=10)):
+        """获取高频实体"""
+        return {
+            "entities": auto_learn_engine.check_high_frequency(threshold),
+            "threshold": threshold
+        }
 
 
 # ==================== 批量操作 API ====================

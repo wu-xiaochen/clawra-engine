@@ -929,3 +929,160 @@ if __name__ == "__main__":
     
     print("\n--- 导出Schema ---")
     print(json.dumps(adapter.export_schema(), indent=2, ensure_ascii=False)[:500])
+
+
+# ==================== SPARQL Endpoint (v3.3新增) ====================
+
+    def sparql_query(self, query: str) -> List[Dict]:
+        """
+        执行SPARQL查询（简化版实现）
+        
+        支持基本的SELECT查询
+        
+        Args:
+            query: SPARQL查询字符串
+        
+        Returns:
+            查询结果列表
+        """
+        # 简化实现：转换为Triple模式匹配
+        query = query.strip()
+        
+        # 提取SELECT变量
+        var_match = re.search(r'SELECT\s+(\?[\w]+|\*)\s+WHERE', query, re.IGNORECASE)
+        if not var_match:
+            return []
+        
+        # 提取WHERE模式
+        where_match = re.search(r'WHERE\s*\{(.+?)\}', query, re.DOTALL | re.IGNORECASE)
+        if not where_match:
+            return []
+        
+        where_clause = where_match.group(1)
+        
+        # 解析三元组模式
+        triple_patterns = []
+        for line in where_clause.split('\n'):
+            line = line.strip().strip('.')
+            if not line:
+                continue
+            
+            parts = line.split()
+            if len(parts) >= 3:
+                subj = self._resolve_sparql_var(parts[0])
+                pred = self._resolve_sparql_var(parts[1])
+                obj = self._resolve_sparql_var(parts[2]) if len(parts) > 2 else None
+                
+                triple_patterns.append({
+                    "subject": subj,
+                    "predicate": pred,
+                    "object": obj
+                })
+        
+        # 执行查询
+        results = []
+        for triple in self.triples:
+            matched = True
+            
+            for pattern in triple_patterns:
+                if pattern["subject"] and "*" not in pattern["subject"]:
+                    if pattern["subject"] != triple.subject.value:
+                        matched = False
+                        break
+                if pattern["predicate"] and "*" not in pattern["predicate"]:
+                    if pattern["predicate"] != triple.predicate.value:
+                        matched = False
+                        break
+                if pattern["object"] and "*" not in pattern["object"]:
+                    if pattern["object"] != triple.object.value:
+                        matched = False
+                        break
+            
+            if matched:
+                results.append(triple.to_dict())
+        
+        return results
+    
+    def _resolve_sparql_var(self, var: str) -> Optional[str]:
+        """解析SPARQL变量"""
+        var = var.strip()
+        if var.startswith("?") or var.startswith("$"):
+            return None  # 变量需要绑定
+        if var.startswith("<") and var.endswith(">"):
+            return var[1:-1]  # URI
+        if ":" in var:
+            for prefix, namespace in self.prefixes.items():
+                if var.startswith(prefix + ":"):
+                    return var.replace(prefix + ":", namespace)
+        return var
+    
+    # ==================== RDF序列化增强 (v3.3新增) ====================
+    
+    def to_rdfxml(self) -> str:
+        """序列化为RDF/XML格式"""
+        lines = ['<?xml version="1.0" encoding="UTF-8"?>']
+        lines.append('<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"')
+        lines.append('         xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#">')
+        
+        # 分组主体
+        subjects: Dict[str, List[RDFTriple]] = defaultdict(list)
+        for triple in self.triples:
+            subjects[triple.subject.value].append(triple)
+        
+        for subj, triples in subjects.items():
+            lines.append(f'  <rdf:Description rdf:about="{subj}">')
+            
+            for triple in triples:
+                pred = triple.predicate.value
+                obj = triple.object.value
+                
+                if triple.object.term_type == RDFTermType.URI:
+                    lines.append(f'    <{self._get_local_name(pred)} rdf:resource="{obj}"/>')
+                else:
+                    datatype = triple.object.datatype or ""
+                    if datatype:
+                        lines.append(f'    <{self._get_local_name(pred)} rdf:datatype="{datatype}">{obj}</{self._get_local_name(pred)}>')
+                    else:
+                        lines.append(f'    <{self._get_local_name(pred)}>{obj}</{self._get_local_name(pred)}>')
+            
+            lines.append('  </rdf:Description>')
+        
+        lines.append('</rdf:RDF>')
+        return '\n'.join(lines)
+    
+    def _get_local_name(self, uri: str) -> str:
+        """获取URI的局部名"""
+        for prefix, namespace in self.prefixes.items():
+            if uri.startswith(namespace):
+                return prefix + ":" + uri[len(namespace):]
+        
+        if "#" in uri:
+            return uri.split("#")[-1]
+        return uri.split("/")[-1]
+    
+    def to_jsonld(self, context: Optional[Dict] = None) -> Dict:
+        """序列化为JSON-LD格式"""
+        default_context = {
+            "@context": {
+                "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+                "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+                "owl": "http://www.w3.org/2002/07/owl#",
+                **self.prefixes
+            }
+        }
+        
+        graph = []
+        for triple in self.triples:
+            graph.append({
+                "@subject": triple.subject.value,
+                "@predicate": triple.predicate.value,
+                "@object": {
+                    "@value": triple.object.value,
+                    "@type": triple.object.datatype if triple.object.datatype else None
+                } if triple.object.term_type == RDFTermType.LITERAL else triple.object.value
+            })
+        
+        result = default_context.copy()
+        result["@graph"] = graph
+        
+        return result
