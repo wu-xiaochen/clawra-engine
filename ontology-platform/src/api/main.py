@@ -761,6 +761,44 @@ async def export_rdfxml(adapter: RDFAdapter = Depends(get_rdf_adapter)):
     return {"format": "rdfxml", "content": adapter.to_rdfxml()}
 
 
+@app.get("/api/v1/export/trig")
+async def export_trig(adapter: RDFAdapter = Depends(get_rdf_adapter)):
+    """导出TriG格式（带命名的图）"""
+    return {"format": "trig", "content": adapter.to_trig()}
+
+
+# ==================== OWL限制 API (v3.5新增) ====================
+
+class RestrictionCreate(BaseModel):
+    """OWL限制创建请求"""
+    uri: str
+    label: str
+    on_property: str
+    restriction_type: str
+    class_uri: Optional[str] = None
+    value: Optional[Any] = None
+    cardinality: Optional[int] = None
+
+
+@app.post("/api/v1/ontology/restrictions")
+async def create_restriction(
+    restriction: RestrictionCreate,
+    adapter: RDFAdapter = Depends(get_rdf_adapter)
+):
+    """创建OWL限制"""
+    r = adapter.define_restriction(
+        uri=restriction.uri,
+        label=restriction.label,
+        on_property=restriction.on_property,
+        restriction_type=restriction.restriction_type,
+        class_uri=restriction.class_uri,
+        value=restriction.value,
+        cardinality=restriction.cardinality
+    )
+    
+    return {"message": "Restriction created", "uri": r.uri}
+
+
 @app.get("/api/v1/triples")
 async def list_triples(
     subject: Optional[str] = Query(None),
@@ -923,6 +961,60 @@ async def propagate_confidence(
         "max_depth": max_depth,
         "confidence_distribution": confidence_map
     }
+
+
+@app.get("/api/v1/entities/{name}/confidence/advanced")
+async def propagate_confidence_advanced(
+    name: str,
+    max_depth: int = Query(3, ge=1, le=10),
+    method: str = Query("multiplicative", pattern="^(min|max|arithmetic|geometric|multiplicative)$"),
+    decay_factor: float = Query(0.9, ge=0.0, le=1.0),
+    client: Neo4jClient = Depends(get_neo4j_client)
+):
+    """高级置信度传播 (v3.5新增)"""
+    confidence_map = client.propagate_confidence_advanced(
+        name, max_depth, method, decay_factor
+    )
+    
+    return {
+        "entity": name,
+        "max_depth": max_depth,
+        "method": method,
+        "decay_factor": decay_factor,
+        "confidence_distribution": confidence_map
+    }
+
+
+# ==================== 批量操作 API (v3.5新增) ====================
+
+class BatchEntitiesRequest(BaseModel):
+    """批量创建实体请求"""
+    entities: List[Dict[str, Any]]
+
+
+@app.post("/api/v1/entities/batch")
+async def batch_create_entities(
+    request: BatchEntitiesRequest,
+    client: Neo4jClient = Depends(get_neo4j_client)
+):
+    """批量创建实体"""
+    ids = client.batch_create_entities(request.entities)
+    return {"message": f"Created {len(ids)} entities", "ids": ids}
+
+
+class BatchRelationshipsRequest(BaseModel):
+    """批量创建关系请求"""
+    relationships: List[Dict[str, Any]]
+
+
+@app.post("/api/v1/relationships/batch")
+async def batch_create_relationships(
+    request: BatchRelationshipsRequest,
+    client: Neo4jClient = Depends(get_neo4j_client)
+):
+    """批量创建关系"""
+    ids = client.batch_create_relationships(request.relationships)
+    return {"message": f"Created {len(ids)} relationships", "ids": ids}
 
 
 # ==================== 推理引擎 API ====================

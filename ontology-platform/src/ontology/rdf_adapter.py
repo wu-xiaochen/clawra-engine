@@ -137,10 +137,90 @@ class OntologyPropertyDef:
     transitive: bool = False
     symmetric: bool = False
     functional: bool = False
+    inverse_functional: bool = False  # v3.5 新增
     
     # v3.3 新增
     confidence: str = "CONFIRMED"
     source: str = "ontology"
+
+
+@dataclass
+class OWLRestriction:
+    """
+    OWL限制定义 (v3.5新增)
+    
+    支持以下限制类型：
+    - onProperty: 指定被限制的属性
+    - someValuesFrom: 至少有一个值满足
+    - allValuesFrom: 所有值都满足
+    - hasValue: 有一个具体值
+    - minCardinality/minQualifiedCardinality: 最小基数
+    - maxCardinality/maxQualifiedCardinality: 最大基数
+    - exactCardinality/qualifiedCardinality: 精确基数
+    """
+    uri: str
+    label: str
+    on_property: str
+    restriction_type: str  # someValuesFrom, allValuesFrom, hasValue, minCardinality, maxCardinality, exactCardinality
+    value: Any = None
+    class_uri: Optional[str] = None  # for someValuesFrom, allValuesFrom
+    cardinality: Optional[int] = None  # for cardinality restrictions
+    
+    def to_rdf(self) -> List[RDFTriple]:
+        """转换为RDF三元组"""
+        triples = []
+        
+        # rdf:type owl:Restriction
+        triples.append(RDFTriple(
+            subject=RDFTerm(self.uri, RDFTermType.URI),
+            predicate=RDFTerm("http://www.w3.org/1999/02/22-rdf-syntax-ns#type", RDFTermType.URI),
+            object=RDFTerm("http://www.w3.org/2002/07/owl#Restriction", RDFTermType.URI),
+            confidence=1.0, source="schema"
+        ))
+        
+        # owl:onProperty
+        triples.append(RDFTriple(
+            subject=RDFTerm(self.uri, RDFTermType.URI),
+            predicate=RDFTerm("http://www.w3.org/2002/07/owl#onProperty", RDFTermType.URI),
+            object=RDFTerm(self.on_property, RDFTermType.URI),
+            confidence=1.0, source="schema"
+        ))
+        
+        # 根据类型添加相应的限制
+        pred_map = {
+            "someValuesFrom": "http://www.w3.org/2002/07/owl#someValuesFrom",
+            "allValuesFrom": "http://www.w3.org/2002/07/owl#allValuesFrom",
+            "hasValue": "http://www.w3.org/2002/07/owl#hasValue",
+            "minCardinality": "http://www.w3.org/2002/07/owl#minCardinality",
+            "maxCardinality": "http://www.w3.org/2002/07/owl#maxCardinality",
+            "exactCardinality": "http://www.w3.org/2002/07/owl#cardinality",
+            "minQualifiedCardinality": "http://www.w3.org/2002/07/owl#minQualifiedCardinality",
+            "maxQualifiedCardinality": "http://www.w3.org/2002/07/owl#maxQualifiedCardinality",
+            "qualifiedCardinality": "http://www.w3.org/2002/07/owl#qualifiedCardinality",
+        }
+        
+        pred_uri = pred_map.get(self.restriction_type)
+        if pred_uri:
+            if self.restriction_type in ["someValuesFrom", "allValuesFrom", "hasValue"]:
+                obj_value = self.class_uri or (self.value if isinstance(self.value, str) else str(self.value))
+                obj_type = RDFTermType.URI if self.class_uri else RDFTermType.LITERAL
+                triples.append(RDFTriple(
+                    subject=RDFTerm(self.uri, RDFTermType.URI),
+                    predicate=RDFTerm(pred_uri, RDFTermType.URI),
+                    object=RDFTerm(obj_value, obj_type),
+                    confidence=1.0, source="schema"
+                ))
+            else:
+                # 基数限制使用literal
+                card_value = str(self.cardinality if self.cardinality is not None else self.value)
+                triples.append(RDFTriple(
+                    subject=RDFTerm(self.uri, RDFTermType.URI),
+                    predicate=RDFTerm(pred_uri, RDFTermType.URI),
+                    object=RDFTerm(card_value, RDFTermType.LITERAL, datatype="http://www.w3.org/2001/XMLSchema#nonNegativeInteger"),
+                    confidence=1.0, source="schema"
+                ))
+        
+        return triples
 
 
 class RDFAdapter:
@@ -399,9 +479,106 @@ class RDFAdapter:
             "@graph": graph
         }, indent=2, ensure_ascii=False)
     
+    def to_rdf_xml(self) -> str:
+        """
+        序列化为RDF/XML格式
+        
+        Returns:
+            RDF/XML格式字符串
+        """
+        lines = []
+        lines.append('<?xml version="1.0" encoding="UTF-8"?>')
+        lines.append('<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"')
+        lines.append('         xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"')
+        lines.append('         xmlns:owl="http://www.w3.org/2002/07/owl#"')
+        lines.append('         xmlns:xsd="http://www.w3.org/2001/XMLSchema#">')
+        
+        # 按主题分组
+        subjects: Dict[str, List[RDFTriple]] = defaultdict(list)
+        for triple in self.triples:
+            subjects[triple.subject.value].append(triple)
+        
+        for subj_uri, triples in subjects.items():
+            # 提取局部名称
+            local_name = subj_uri.split("#")[-1] if "#" in subj_uri else subj_uri.split("/")[-1]
+            
+            lines.append(f'  <rdf:Description rdf:about="{subj_uri}">')
+            
+            for triple in triples:
+                pred_uri = triple.predicate.value
+                pred_local = pred_uri.split("#")[-1] if "#" in pred_uri else pred_uri.split("/")[-1]
+                
+                if triple.object.term_type == RDFTermType.URI:
+                    obj_uri = triple.object.value
+                    lines.append(f'    <{pred_local} rdf:resource="{obj_uri}"/>')
+                else:
+                    obj_value = triple.object.value.strip('"')
+                    dtype = triple.object.datatype
+                    if dtype:
+                        dtype_local = dtype.split("#")[-1] if "#" in dtype else dtype
+                        lines.append(f'    <{pred_local} rdf:datatype="{dtype}">{obj_value}</{pred_local}>')
+                    else:
+                        lines.append(f'    <{pred_local}>{self._escape_xml(obj_value)}</{pred_local}>')
+            
+            lines.append('  </rdf:Description>')
+        
+        lines.append('</rdf:RDF>')
+        return "\n".join(lines)
+    
+    def _escape_xml(self, text: str) -> str:
+        """转义XML特殊字符"""
+        return (text
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;")
+            .replace("'", "&apos;"))
+    
     def to_ntriples(self) -> str:
         """序列化为N-Triples格式"""
         return "\n".join(triple.to_nt() for triple in self.triples)
+    
+    def to_trig(self) -> str:
+        """
+        序列化为TriG格式（带命名的图）
+        
+        Returns:
+            TriG格式字符串
+        """
+        # 按图分组
+        graphs: Dict[str, List[RDFTriple]] = defaultdict(list)
+        default_graph: List[RDFTriple] = []
+        
+        for triple in self.triples:
+            if triple.graph:
+                graphs[triple.graph].append(triple)
+            else:
+                default_graph.append(triple)
+        
+        lines = []
+        
+        # 前缀
+        for prefix, namespace in sorted(self.prefixes.items()):
+            lines.append(f"@prefix {prefix}: <{namespace}> .")
+        lines.append("")
+        
+        # 默认图
+        if default_graph:
+            lines.append("{")
+            for triple in default_graph:
+                lines.append(triple.to_nt())
+            lines.append("}")
+            lines.append("")
+        
+        # 命名图
+        for graph_uri, triples in graphs.items():
+            lines.append(f"<{graph_uri}> {{")
+            for triple in triples:
+                lines.append(triple.to_nt())
+            lines.append("}")
+            lines.append("")
+        
+        return "\n".join(lines)
     
     def save_turtle(self, file_path: str):
         """保存为Turtle文件"""
@@ -532,6 +709,47 @@ class RDFAdapter:
                 uri, prop, value,
                 confidence=1.0, source="schema"
             )
+    
+    def define_restriction(
+        self,
+        uri: str,
+        label: str,
+        on_property: str,
+        restriction_type: str,
+        class_uri: Optional[str] = None,
+        value: Any = None,
+        cardinality: Optional[int] = None
+    ) -> OWLRestriction:
+        """
+        定义一个OWL限制 (v3.5新增)
+        
+        Args:
+            uri: 限制URI
+            label: 限制标签
+            on_property: 被限制的属性
+            restriction_type: 限制类型 (someValuesFrom, allValuesFrom, hasValue, minCardinality, maxCardinality, exactCardinality)
+            class_uri: 所属类 (for someValuesFrom, allValuesFrom)
+            value: 具体值 (for hasValue)
+            cardinality: 基数 (for cardinality restrictions)
+        
+        Returns:
+            OWLRestriction实例
+        """
+        restriction = OWLRestriction(
+            uri=self._create_uri(uri),
+            label=label,
+            on_property=self._create_uri(on_property),
+            restriction_type=restriction_type,
+            class_uri=self._create_uri(class_uri) if class_uri else None,
+            value=value,
+            cardinality=cardinality
+        )
+        
+        # 转换为RDF三元组
+        for triple in restriction.to_rdf():
+            self.triples.append(triple)
+        
+        return restriction
     
     # ==================== 本体查询 ====================
     

@@ -785,6 +785,100 @@ class Neo4jClient:
         
         logger.info(f"Batch imported {len(triples)} triples")
     
+    def propagate_confidence_advanced(
+        self,
+        start_name: str,
+        max_depth: int = 3,
+        method: str = "multiplicative",
+        decay_factor: float = 0.9
+    ) -> Dict[str, float]:
+        """
+        高级置信度传播算法 (v3.5新增)
+        
+        支持多种传播方法和衰减因子
+        
+        Args:
+            start_name: 起始实体
+            max_depth: 最大深度
+            method: 传播方法 (min, max, arithmetic, geometric, multiplicative)
+            decay_factor: 深度衰减因子 (0-1)
+        
+        Returns:
+            实体名到置信度的映射
+        """
+        confidence_map: Dict[str, float] = {start_name: 1.0}
+        path_confidence: Dict[str, List[float]] = defaultdict(list)
+        
+        # 构建邻接表
+        adjacency: Dict[str, List[tuple[str, float]]] = defaultdict(list)
+        
+        for key, rel in self._relationship_index.items():
+            adjacency[rel.start_node].append((rel.end_node, rel.confidence))
+            if rel.properties.get("bidirectional", False):
+                adjacency[rel.end_node].append((rel.start_node, rel.confidence))
+        
+        # BFS 传播
+        visited: Dict[str, int] = {start_name: 0}
+        queue: List[tuple[str, float, int]] = [(start_name, 1.0, 0)]
+        
+        while queue:
+            current, current_conf, depth = queue.pop(0)
+            
+            if depth >= max_depth:
+                continue
+            
+            for neighbor, edge_conf in adjacency.get(current, []):
+                depth_decay = decay_factor ** depth
+                
+                if method == "min":
+                    new_conf = min(current_conf, edge_conf) * depth_decay
+                elif method == "max":
+                    new_conf = max(current_conf, edge_conf) * depth_decay
+                elif method == "arithmetic":
+                    new_conf = ((current_conf + edge_conf) / 2) * depth_decay
+                elif method == "geometric":
+                    new_conf = ((current_conf * edge_conf) ** 0.5) * depth_decay
+                elif method == "multiplicative":
+                    new_conf = current_conf * edge_conf * depth_decay
+                else:
+                    new_conf = current_conf * edge_conf * depth_decay
+                
+                path_confidence[neighbor].append(new_conf)
+                
+                best_conf = max(path_confidence[neighbor])
+                if neighbor not in visited or best_conf > confidence_map.get(neighbor, 0):
+                    confidence_map[neighbor] = best_conf
+                    visited[neighbor] = depth + 1
+                    queue.append((neighbor, new_conf, depth + 1))
+        
+        return confidence_map
+    
+    def execute_transaction(self, operations: List[Dict]) -> List[Any]:
+        """
+        执行事务操作 (v3.5新增)
+        
+        Args:
+            operations: 操作列表
+        
+        Returns:
+            操作结果列表
+        """
+        if not self._connected:
+            logger.warning("Transaction not supported in memory mode")
+            return []
+        
+        results = []
+        with self.driver.session(database=self.database) as session:
+            with session.begin_transaction() as tx:
+                for op in operations:
+                    query = op.get("query")
+                    params = op.get("params", {})
+                    result = tx.run(query, params)
+                    results.append(list(result))
+                tx.commit()
+        
+        return results
+    
     def create_entity_index(self):
         """创建索引"""
         if not self._connected:
