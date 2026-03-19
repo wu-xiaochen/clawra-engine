@@ -17,7 +17,7 @@ metadata:
 
 ---
 
-## 🆕 v3.4 新增：供应链领域扩展
+## 🆕 v3.5 新增：多领域扩展
 
 ### 核心升级：从被动到主动
 
@@ -690,7 +690,7 @@ python3 scripts/ontology-clawra.py trace --decision decision_id
 
 ---
 
-## 十一、供应链领域推理示例（v3.4新增）
+## 十一、多领域推理示例（v3.5新增）
 
 ### 场景1：供应商风险评估
 
@@ -759,7 +759,7 @@ python3 scripts/ontology-clawra.py trace --decision decision_id
 
 ---
 
-## 十二、运营机制（v3.4新增）
+## 十二、运营机制（v3.5新增）
 
 ### 12.1 持续学习闭环
 
@@ -794,4 +794,4 @@ python3 scripts/ontology-clawra.py trace --decision decision_id
 
 ---
 
-**v3.4 核心升级**：供应链领域强化 + 推理场景脚本 + 运营机制闭环
+**v3.5 核心升级**：多领域综合版 + 推理场景脚本 + 运营机制闭环
