@@ -10,3 +10,16 @@ tmp/
 # Ignore .openclaw (local config)
 .openclaw/
 .clawhub/
+
+# OpenClaw workspace files (local only, not project code)
+AGENTS.md
+AGENTS.md.bak
+SOUL.md
+SOUL.md.bak
+MEMORY.md
+HEARTBEAT.md
+BOOTSTRAP.md
+IDENTITY.md
+TOOLS.md
+USER.md
+VERSION
