@@ -237,7 +237,7 @@ class AppState:
     rdf_adapter: Optional[RDFAdapter] = None
     neo4j_client: Optional[Neo4jClient] = None
     reasoner: Optional[Reasoner] = None
-    confidence_calculator: ConfidenceCalculator = None
+    confidence_calculator: Optional[ConfidenceCalculator] = None
     initialized: bool = False
 
 
