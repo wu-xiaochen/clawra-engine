@@ -4,6 +4,14 @@
 *.jpg
 *.DS_Store
 
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
 # Ignore tmp
 tmp/
 
