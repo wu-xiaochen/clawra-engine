@@ -1,0 +1,73 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ontology-platform"
+version = "0.9.0-alpha"
+description = "Agent growth SDK — memory, reasoning, and metacognition for AI agents"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Wu Xiaochen", email = "wu@ontology-platform.dev"}
+]
+keywords = ["AI", "agents", "ontology", "reasoning", "metacognition", "knowledge-graph", "LLM"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+requires-python = ">=3.10"
+dependencies = [
+    "rdflib>=7.0.0",
+    "owlrl>=6.0.0",
+    "networkx>=3.1",
+    "fastapi>=0.109.0",
+    "uvicorn>=0.27.0",
+    "pydantic>=2.0.0",
+    "pyyaml>=6.0.0",
+    "requests>=2.31.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "httpx>=0.26.0",
+    "ruff>=0.1.0",
+    "mypy>=1.8.0",
+]
+neo4j = [
+    "neo4j>=5.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/wu-xiaochen/ontology-platform"
+Documentation = "https://github.com/wu-xiaochen/ontology-platform#readme"
+Repository = "https://github.com/wu-xiaochen/ontology-platform"
+Issues = "https://github.com/wu-xiaochen/ontology-platform/issues"
+Changelog = "https://github.com/wu-xiaochen/ontology-platform/releases"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true

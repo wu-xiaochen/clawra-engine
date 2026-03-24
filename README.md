@@ -22,8 +22,24 @@
 
 ## ⚡ Quick Start
 
+### pip install（推荐）
+
 ```bash
 pip install ontology-platform
+```
+
+### 从源码安装
+
+```bash
+git clone https://github.com/wu-xiaochen/ontology-platform.git
+cd ontology-platform
+pip install -e .
+```
+
+### 开发版安装
+
+```bash
+pip install ontology-platform[dev]
 ```
 
 ```python
