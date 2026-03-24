@@ -2,10 +2,10 @@
 
 ## 垂直领域可信AI推理引擎平台
 
-**版本**: 3.0 (生产级版)  
+**版本**: 3.1 (生产级版)  
 **状态**: 规划  
 **日期**: 2026-03-24  
-**基于**: ontology-clawra v3.3
+**基于**: ontology-clawra v3.3 (自动学习 + 置信度追踪 + 规则演化)
 
 ---
 
@@ -237,6 +237,32 @@ type Conclusion {
 | `entity_mentioned_3_times` | create_index | 高频实体识别 |
 | `ontology_lookup_failed` | suggest_supplement | 本体缺失建议 |
 | `user_correction` | update_entity | 错误纠正更新 |
+
+#### 2.3.4 规则演化机制 (v3.3核心特性)
+
+| 功能 | 优先级 | 描述 |
+|------|--------|------|
+| 证据驱动演化 | P0 | 基于新证据自动更新规则置信度 |
+| 规则验证 | P0 | 置信度<0.3时标记待验证 |
+| 演化日志 | P1 | 记录规则变更历史 |
+| 冲突检测 | P1 | 检测规则间矛盾 |
+
+**演化规则**:
+```
+证据支持：置信度 = min(置信度 × 1.1, 1.0)
+证据否定：置信度 = 置信度 × 0.5
+置信度 < 0.3：标记为待验证
+```
+
+**接口设计**:
+```yaml
+POST /api/v1/rules/{id}/evolve
+  - body: { evidence: object, confirms: boolean }
+  - response: { new_confidence: float, status: string }
+
+GET /api/v1/rules/{id}/evolution-history
+  - response: { history: [{timestamp, evidence, old_confidence, new_confidence}] }
+```
 
 **接口设计**:
 ```yaml
@@ -579,8 +605,9 @@ POST /api/v1/supplier/risk-evaluation
 | 2.0 | 2026-03-19 | 初始生产级版本 |
 | 2.1 | 2026-03-23 | 新增自动学习模块、供应链场景 |
 | 3.0 | 2026-03-24 | 基于v3.3重构，优化核心推理引擎 |
+| 3.1 | 2026-03-24 | 细化v3.3特性：自动学习引擎、智能触发器、规则演化机制 |
 
 ---
 
-*文档版本: 3.0*  
+*文档版本: 3.1*  
 *最后更新: 2026-03-24*

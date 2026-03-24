@@ -1,4 +1,4 @@
-# ontology-platform
+# ontology-platform v5.0
 
 ### 让每个 Agent 都拥有真正的成长能力
 
