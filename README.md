@@ -84,7 +84,9 @@ ontology-platform Demo: Autonomous Supplier Monitor
 
 ## 📦 Core Features
 
-### 1. Reasoning Engine
+### 1. Confidence System (Core Differentiator)
+
+ontology-platform is the **only** AI memory framework with built-in confidence scoring:
 
 ```python
 from ontology.reasoner import OntologyReasoner, ConfidenceLevel
@@ -94,9 +96,17 @@ result = reasoner.reason(
     query="delivery risk",
     context={"entity_id": "SUP002"}
 )
+
+# Three confidence levels:
+# - CONFIRMED: Multi-source verified, high trust
+# - ASSUMED: Single source, requires user confirmation
+# - SPECULATIVE: High uncertainty, needs more data
+
 print(f"Confidence: {result.confidence}")  # → ASSUMED/CONFIRMED
 print(f"Conclusion: {result.conclusion}")
 ```
+
+**Why it matters**: Eliminates AI hallucinations by making uncertainty explicit.
 
 ### 2. Meta-Cognition
 
@@ -119,10 +129,40 @@ reasoner.add_rule({
 
 ---
 
+## 🔒 Enterprise Security: Local Deployment
+
+### Data Stays Local
+
+ontology-platform is designed for **enterprise-grade security**:
+
+- **No cloud dependency**: All data stored locally
+- **No external network calls**: Runs entirely in your infrastructure
+- **Full data sovereignty**: Your data never leaves your environment
+- **On-premises deployment**: Deploy in your private cloud or data center
+
+### Use Cases
+
+| Deployment | Scenario |
+|------------|----------|
+| On-premises | Enterprise internal AI systems |
+| Private cloud | Regulated industries (finance, healthcare) |
+| Edge deployment | IoT / embedded systems |
+
+```python
+# Local storage configuration
+reasoner = OntologyReasoner(
+    storage_path="/opt/ontology-platform/data",
+    network_enabled=False  # Disable all network calls
+)
+```
+
+---
+
 ## 📖 Documentation
 
 - [Quick Start Guide](docs/quickstart.md)
 - [API Reference](docs/api.md)
+- [Architecture](docs/architecture.md)
 - [Examples](examples/)
 - [Changelog](CHANGELOG.md)
 

@@ -274,10 +274,49 @@ GET /api/v1/search
 
 ---
 
+## 🔒 Security & Enterprise Deployment
+
+### Design Principles
+
+1. **Zero Trust Network**: No automatic external connections
+2. **Data Sovereignty**: All data stays in your infrastructure
+3. **Local-First**: Works without internet connectivity
+
+### Security Features
+
+| Feature | Description |
+|---------|-------------|
+| **Local Storage** | SQLite/Neo4j deployed on-premises |
+| **No Cloud Dependency** | Runs completely offline |
+| **Network Isolation** | Optional: disable all network calls |
+| **Audit Logging** | Full reasoning trace for compliance |
+| **Access Control** | Role-based permissions (future) |
+
+### Deployment Options
+
+```python
+# Enterprise configuration
+OntologyPlatform(
+    storage="local",           # local | neo4j
+    storage_path="/data/ontology",
+    network_enabled=False,    # Disable all network
+    audit_enabled=True,       # Log all operations
+)
+```
+
+### Compliance
+
+Suitable for regulated industries:
+- **Finance**: Local data, no cloud exposure
+- **Healthcare**: HIPAA-compliant deployment
+- **Government**: On-premises requirements met
+
+---
+
 ## 路线图
 
 详见 [roadmap.md](roadmap.md)
 
 ---
 
-*最后更新：2026-03-19*
+*最后更新：2026-03-25*
