@@ -81,7 +81,7 @@ class TestReasoner:
             confidence=0.9
         )
         reasoner.add_rule(rule)
-        assert len(reasoner.facts) >= 1
+        assert len(reasoner.rules) >= 3  # 2 builtin + 1 added
 
     def test_add_fact(self):
         """测试添加事实"""
@@ -95,7 +95,7 @@ class TestReasoner:
         reasoner.add_fact(fact)
         assert len(reasoner.facts) >= 1
 
-        assert len(reasoner.rules) >= 3
+        assert len(reasoner.rules) >= 2  # 2 builtin rules
 
 
 class TestIntegration:
