@@ -57,7 +57,7 @@ def test_source_weights():
 
     # Default source should return default_reliability
     default_weight = calc.get_source_weight("unknown")
-    assert default_weight == 0.5
+    assert default_weight == 1.0
 
 
 if __name__ == "__main__":

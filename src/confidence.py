@@ -48,14 +48,16 @@ class ConfidenceCalculator:
         print(f"置信度: {result.value:.2f}")
     """
     
-    def __init__(self, default_reliability: float = 0.5):
+    def __init__(self, default_reliability: float = 0.5, default_source_weight: float = 1.0):
         """
         初始化
         
         Args:
-            default_reliability: 默认来源可靠性
+            default_reliability: 默认证据可靠性
+            default_source_weight: 默认来源权重 (1.0 = 完全信任)
         """
         self.default_reliability = default_reliability
+        self.default_source_weight = default_source_weight
         self.source_weights: dict[str, float] = {}
         
     def calculate(
@@ -97,11 +99,14 @@ class ConfidenceCalculator:
     
     def _calculate_weighted(self, evidence: list[Evidence]) -> ConfidenceResult:
         """加权平均法"""
-        total_weight = sum(e.reliability for e in evidence)
+        # 使用source_weights进行加权，权重影响最终置信度
+        weights = [self.get_source_weight(e.source) for e in evidence]
+        total_weight = sum(weights)
         if total_weight == 0:
             return ConfidenceResult(value=0.0, method="weighted")
         
-        weighted_sum = sum(e.reliability for e in evidence)
+        # 加权平均：(权重1*可靠性1 + 权重2*可靠性2 + ...) / 证据数量
+        weighted_sum = sum(w * e.reliability for w, e in zip(weights, evidence))
         confidence = weighted_sum / len(evidence)
         
         return ConfidenceResult(
@@ -293,7 +298,7 @@ class ConfidenceCalculator:
     
     def get_source_weight(self, source: str) -> float:
         """获取来源权重"""
-        return self.source_weights.get(source, self.default_reliability)
+        return self.source_weights.get(source, self.default_source_weight)
     
     def set_source_weight(self, source: str, weight: float):
         """设置来源权重"""
