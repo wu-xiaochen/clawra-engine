@@ -169,3 +169,46 @@ Built with inspiration from:
 ---
 **Ready to build agents that think before they speak?**
 [Get Started →](docs/quickstart.md)
+
+---
+
+## 🆕 最新优化（2026-03）
+
+### 短期优化
+- ✅ 统一包入口：`src/ontology_platform/` 
+- ✅ 分层上下文分块：`src/chunking/` 模块
+- ✅ OWL 语义增强：增加 OWA 说明文档 (`OWL_ SEMANTICS. md`)
+
+### 中期优化
+- ✅ Docker 一键部署：`Dockerfile` + `docker-compose. yml`
+- ✅ GitHub Actions 本体校验：`.github/workflows/ontology-validate. yml`
+
+### 长期优化
+- ✅ Agent 记忆治理模块：`src/memory/` - 实现语义漂移检测与目标稳定性校验
+
+### 使用示例
+
+```python
+# 1. 使用分层分块处理长文档
+from ontology_platform.chunking import HierarchicalChunker
+
+chunker = HierarchicalChunker(max_tokens=4096)
+chunks = chunker.chunk(long_document)
+
+# 2. 使用记忆治理检测语义漂移
+from ontology_platform.memory import MemoryGovernance
+
+gov = MemoryGovernance(agent_ontology)
+health = gov.check_health()
+print(f"Health: {health.overall_score}")
+```
+
+### 容器化部署
+
+```bash
+# 一键启动所有服务
+docker-compose up -d
+
+# 访问 API
+curl http://localhost:8000/health
+```
