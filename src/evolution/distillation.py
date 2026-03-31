@@ -1,7 +1,7 @@
 import logging
 from typing import Any, Dict, List, Optional
-from ..core.reasoner import Fact, Reasoner
-from ..core.loader import OntologyClass
+from core.reasoner import Fact, Reasoner
+from core.loader import OntologyClass
 
 logger = logging.getLogger(__name__)
 

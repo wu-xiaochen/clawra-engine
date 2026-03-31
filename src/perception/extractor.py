@@ -1,6 +1,6 @@
 import logging
 from typing import Any, Dict, List
-from ..core.reasoner import Fact
+from core.reasoner import Fact
 
 logger = logging.getLogger(__name__)
 

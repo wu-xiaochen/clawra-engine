@@ -31,6 +31,7 @@ graph TD
 ## 🌟 Key Features
 
 -   **🧠 Neuro-Symbolic Core**: Fuses the generative flexibility of LLMs with the deterministic precision of RDF/OWL logic.
+-   **🕸️ Knowledge Graph (Neo4j)**: Native integration for persistent, high-performance semantic storage and complex path tracing.
 -   **📈 Self-Evolving Ontology**: A "growing mind" that autonomously distills structured knowledge from every interaction.
 -   **🛡️ Hallucination Guardrails**: Real-time logical verification that blocks inconsistent or groundless responses.
 -   **🕵️ Metacognitive Perception**: Agents that "reflect" on their own reasoning paths before acting.

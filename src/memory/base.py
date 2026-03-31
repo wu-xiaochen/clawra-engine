@@ -1,6 +1,6 @@
 import logging
 from typing import Any, List, Optional, Dict
-from ..core.reasoner import Fact
+from core.reasoner import Fact
 from .neo4j_adapter import Neo4jClient
 
 logger = logging.getLogger(__name__)

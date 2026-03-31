@@ -453,24 +453,37 @@ class Reasoner:
         return matched
     
     def _pattern_match(self, pattern: str, fact: Fact) -> Optional[dict[str, str]]:
-        """模式匹配"""
-        # 简化: 检查主体和谓词是否匹配
-        # 实际应支持更复杂的模式匹配
-        
+        """
+        模式匹配
+        支持格式: (?x predicate object) 或 (?x predicate ?y)
+        """
         # 提取模式中的变量
-        vars_in_pattern = re.findall(r'\?(\w+)', pattern)
-        if not vars_in_pattern:
+        pattern = pattern.strip('()')
+        parts = pattern.split()
+        if len(parts) < 3:
             return None
+            
+        p_subj, p_pred, p_obj = parts
         
-        # 检查 pattern 中第一个变量匹配 subject
-        # 格式: (?x ?p ?y) 或 (?s ?p ?o)
-        if '?x' in pattern and '?y' in pattern:
-            # (?x ?p ?y) 匹配当前事实
-            # 需要规则本身定义了 predicate
-            pass
+        # 检查谓词是否匹配 (核心逻辑)
+        if p_pred != fact.predicate:
+            return None
+            
+        substitutions = {}
         
-        # 简化实现: 如果 pattern 是空的或包含相同谓词
-        return {} if vars_in_pattern else None
+        # 匹配主体
+        if p_subj.startswith('?'):
+            substitutions[p_subj] = fact.subject
+        elif p_subj != fact.subject:
+            return None
+            
+        # 匹配客体
+        if p_obj.startswith('?'):
+            substitutions[p_obj] = fact.object
+        elif p_obj != fact.object:
+            return None
+            
+        return substitutions
     
     def _apply_rule(
         self,
