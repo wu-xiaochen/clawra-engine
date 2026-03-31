@@ -164,7 +164,7 @@ class DataExporter:
         lines = []
         
         if options.include_metadata:
-            lines.append("# Exported from Ontology Platform")
+            lines.append("# Exported from Clawra")
             lines.append(f"# Export time: {datetime.now().isoformat()}")
             lines.append(f"# Triple count: {len(triples)}")
             lines.append("")

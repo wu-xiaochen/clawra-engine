@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-ontology-platform Demo: Autonomous Supplier Monitor
+clawra Demo: Autonomous Supplier Monitor
 展示 Agent 如何进行推理、置信度评估、自我进化
 
 运行方式: python examples/demo_supplier_monitor.py
@@ -25,7 +25,7 @@ def generate_mock_suppliers():
 
 def run_demo():
     print("=" * 65)
-    print("ontology-platform Demo: Autonomous Supplier Monitor")
+    print("clawra Demo: Autonomous Supplier Monitor")
     print("=" * 65)
     
     # 1. 初始化推理引擎

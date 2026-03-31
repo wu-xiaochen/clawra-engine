@@ -39,7 +39,7 @@ The LLM doesn't know it hallucinated. It confidently asserts false facts because
 
 **What I built:**
 
-ontology-platform is an agent framework with ontological reasoning. Instead of:
+clawra is an agent framework with ontological reasoning. Instead of:
 - Retrieval → Generate → Hallucinate
 
 It does:
@@ -107,8 +107,8 @@ This is not RAG. This is the agent gaining *reasoning capabilities* in productio
 
 **No vector DB required.** ~5MB install.
 
-Repo: https://github.com/wu-xiaochen/ontology-platform
-Docs: https://github.com/wu-xiaochen/ontology-platform#readme
+Repo: https://github.com/wu-xiaochen/clawra
+Docs: https://github.com/wu-xiaochen/clawra#readme
 
 Would love honest feedback from people who've dealt with hallucination in production RAG systems. Is this the right approach?
 
@@ -212,7 +212,7 @@ This is complementary to Mem0 (memory storage) and RAG (retrieval). Think of it 
 Mem0 says: "I remember this"
 Ontology says: "I understand why this matters"
 
-Repo: https://github.com/wu-xiaochen/ontology-platform
+Repo: https://github.com/wu-xiaochen/clawra
 
 Would love to hear from anyone who's tried ontological reasoning in agent systems — especially interested in failure modes and scaling concerns.
 ```
@@ -233,9 +233,9 @@ Would love to hear from anyone who's tried ontological reasoning in agent system
 Title: 5MB agent framework that learns during runtime — no vector DB, no retraining
 
 **The pitch in one sentence:**
- ontology-platform = knowledge graph + reasoning engine + meta-cognition, in ~5MB.
+ clawra = knowledge graph + reasoning engine + meta-cognition, in ~5MB.
 
-pip install ontology-platform, no external services.
+pip install clawra, no external services.
 
 **What it does:**
 
@@ -304,8 +304,8 @@ ontology.learn(
 - Make agent reasoning traceable and confidence-quantified
 - Enable runtime rule learning without ML retraining
 
-GitHub: https://github.com/wu-xiaochen/ontology-platform
-PyPI: https://pypi.org/project/ontology-platform/
+GitHub: https://github.com/wu-xiaochen/clawra
+PyPI: https://pypi.org/project/clawra/
 
 Python 3.9+, MIT license, ~5MB install.
 ```
@@ -379,7 +379,7 @@ class OntologicalAgent(Agent):
 
 LangChain handles the tool chaining. Ontology handles the knowledge reasoning.
 
-Repo: https://github.com/wu-xiaochen/ontology-platform
+Repo: https://github.com/wu-xiaochen/clawra
 
 Happy to discuss integration patterns with LangChain — been thinking about this problem for a while.
 ```
@@ -390,14 +390,14 @@ Happy to discuss integration patterns with LangChain — been thinking about thi
 
 ### 标题：
 
-**Show HN: ontology-platform — give your AI agents the ability to learn and reason at runtime**
+**Show HN: clawra — give your AI agents the ability to learn and reason at runtime**
 
 ---
 
 ### 正文：
 
 ```
-Title: Show HN: ontology-platform — give your AI agents the ability to learn and reason at runtime
+Title: Show HN: clawra — give your AI agents the ability to learn and reason at runtime
 
 **What it is:**
 
@@ -407,7 +407,7 @@ A Python library that gives AI agents structured ontological reasoning capabilit
 
 Most agent frameworks today are essentially: retrieve relevant context → generate response. This works, but the agent has no way to verify if its response is actually consistent with your knowledge base. It just strings tokens together based on probability.
 
-ontology-platform replaces the blind "generate" step with structured reasoning:
+clawra replaces the blind "generate" step with structured reasoning:
 
 ```
 Retrieval → Causal/Logical Reasoning → Confidence Score → Validated Response
@@ -460,10 +460,10 @@ print(f"Reasoning: {result.reasoning_chain}")
 
 **If you've dealt with hallucination in production agent systems and wished the agent could "know when it doesn't know" — this might be worth a look.**
 
-GitHub: https://github.com/wu-xiaochen/ontology-platform
-Docs: https://github.com/wu-xiaochen/ontology-platform#readme
+GitHub: https://github.com/wu-xiaochen/clawra
+Docs: https://github.com/wu-xiaochen/clawra#readme
 
-Install: pip install ontology-platform
+Install: pip install clawra
 ```
 
 ---

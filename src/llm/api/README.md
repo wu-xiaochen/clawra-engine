@@ -1,6 +1,6 @@
 # API 模块 (API Module)
 
-本目录包含 ontology-platform 的 API 层实现，基于 FastAPI 框架提供 RESTful 和 GraphQL 接口。
+本目录包含 clawra 的 API 层实现，基于 FastAPI 框架提供 RESTful 和 GraphQL 接口。
 
 ## 📁 文件结构
 

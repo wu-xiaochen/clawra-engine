@@ -248,7 +248,7 @@ state = AppState()
 async def lifespan(app: FastAPI):
     """应用生命周期管理"""
     # 启动时初始化
-    logger.info("Initializing Ontology Platform API...")
+    logger.info("Initializing Clawra API...")
     
     # 初始化RDF适配器
     try:
@@ -281,23 +281,23 @@ async def lifespan(app: FastAPI):
     state.confidence_calculator = ConfidenceCalculator()
     
     state.initialized = True
-    logger.info("Ontology Platform API initialized")
+    logger.info("Clawra API initialized")
     
     yield
     
     # 关闭时清理
     if state.neo4j_client:
         state.neo4j_client.close()
-    logger.info("Ontology Platform API shutdown")
+    logger.info("Clawra API shutdown")
 
 
 # ==================== FastAPI应用 ====================
 
 app = FastAPI(
-    title="Ontology Platform API",
+    title="Clawra API",
     description="""## Overview
 
-The Ontology Platform API provides a comprehensive RESTful interface for managing ontological data, 
+The Clawra API provides a comprehensive RESTful interface for managing ontological data, 
 performing reasoning operations, and calculating confidence scores.
 
 ## Features
@@ -584,7 +584,7 @@ async def root():
     ### Example Response
     ```json
     {
-        "name": "Ontology Platform API",
+        "name": "Clawra API",
         "version": "3.5.0",
         "description": "基于ontology-clawra v3.4的生产级本体平台",
         "docs": "/docs",
@@ -599,7 +599,7 @@ async def root():
     """
     perf_snapshot = performance_monitor.get_snapshot()
     return {
-        "name": "Ontology Platform API",
+        "name": "Clawra API",
         "version": "3.5.0",
         "description": "基于ontology-clawra v3.5的生产级本体平台",
         "docs": "/docs",

@@ -1,4 +1,4 @@
-# ontology-platform 架构文档
+# clawra 架构文档
 
 **版本**：v1.0
 **更新**：2026-03-19
@@ -14,7 +14,7 @@
 Agent成长 = 本体记忆 + 逻辑推理引擎 + 因果推理 + 置信度自知
 ```
 
-## 为什么需要ontology-platform？
+## 为什么需要clawra？
 
 ### 当前Agent的困境
 
@@ -41,7 +41,7 @@ Agent成长 = 本体记忆 + 逻辑推理引擎 + 因果推理 + 置信度自知
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    ontology-platform                         │
+│                    clawra                         │
 │                                                              │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐       │
 │  │   Memory    │  │  Reasoning  │  │   Meta      │       │
@@ -235,7 +235,7 @@ GET /api/v1/search
 ```json
 {
   "mcpServer": {
-    "name": "ontology-platform",
+    "name": "clawra",
     "version": "1.0.0",
     "capabilities": {
       "memory": {

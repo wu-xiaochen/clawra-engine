@@ -64,7 +64,7 @@ context = memory.search("这个项目应该用什么框架？", user_id="u_123")
 
 ## 3. 本体论驱动的方法
 
-ontology-platform 尝试用**本体论（Ontology）**的方式来解决这个问题。不是把记忆存成向量碎片，而是构建**结构化的知识图谱**——每个节点是一个实体，每条边是一个关系，每个属性都带有语义约束。
+clawra 尝试用**本体论（Ontology）**的方式来解决这个问题。不是把记忆存成向量碎片，而是构建**结构化的知识图谱**——每个节点是一个实体，每条边是一个关系，每个属性都带有语义约束。
 
 这带来了几个关键变化：
 
@@ -183,15 +183,15 @@ print(result.reasoning_chain)
 #    "新学习规则: 湿度+时间→老化率+15%", "结论: 风险等级: 高置信度"]
 ```
 
-传统 ML 系统要加入一条新规则，需要重新训练模型。ontology-platform 通过**规则引擎 + 本体推理**的混合架构，在运行时直接更新知识图谱。
+传统 ML 系统要加入一条新规则，需要重新训练模型。clawra 通过**规则引擎 + 本体推理**的混合架构，在运行时直接更新知识图谱。
 
 ---
 
 ## 6. 和 Mem0 的关系：不是替代，是增强
 
-如果你已经在用 Mem0，ontology-platform 并不是要替换它。它们的定位是：
+如果你已经在用 Mem0，clawra 并不是要替换它。它们的定位是：
 
-| 维度 | Mem0 | ontology-platform |
+| 维度 | Mem0 | clawra |
 |------|------|-------------------|
 | **核心能力** | 记忆存储与检索 | 结构化知识 + 推理 |
 | **知识表示** | 向量嵌入 | 本体图谱（实体+关系+属性）|
@@ -200,7 +200,7 @@ print(result.reasoning_chain)
 | **学习方式** | 积累式记忆 | 规则驱动的运行时学习 |
 | **适用场景** | 个人助手、RAG | 企业决策、Agent 自主进化 |
 
-实际上，**两者可以结合**：用 Mem0 做快速记忆存储，用 ontology-platform 做深度推理和决策。
+实际上，**两者可以结合**：用 Mem0 做快速记忆存储，用 clawra 做深度推理和决策。
 
 ---
 
@@ -224,7 +224,7 @@ print(result.reasoning_chain)
 ## 附录：快速开始
 
 ```bash
-pip install ontology-platform
+pip install clawra
 ```
 
 ```python
@@ -247,8 +247,8 @@ print(f"Confidence: {result.confidence}")
 print(f"Reasoning: {result.reasoning_chain}")
 ```
 
-**GitHub**: https://github.com/wu-xiaochen/ontology-platform  
-**文档**: https://github.com/wu-xiaochen/ontology-platform#readme
+**GitHub**: https://github.com/wu-xiaochen/clawra  
+**文档**: https://github.com/wu-xiaochen/clawra#readme
 
 ---
 

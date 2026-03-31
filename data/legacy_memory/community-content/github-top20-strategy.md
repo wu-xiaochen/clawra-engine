@@ -1,4 +1,4 @@
-# ontology-platform GitHub Top20 战略研究报告
+# clawra GitHub Top20 战略研究报告
 
 > **角色**: CEO - 战略调研（深度分析）
 > **目标**: 制定进入 GitHub Trending Top 20 的完整战略
@@ -53,7 +53,7 @@
 
 - **Daily榜（当日增速）**：通常需要 **80-200+ stars/day** 才能进入前20
 - **Weekly榜**：需要 **500-1000+ stars/week** 积累
-- **当前ontology-platform**：0.125 stars/day（1星/8天），差距约 **640-1600倍**
+- **当前clawra**：0.125 stars/day（1星/8天），差距约 **640-1600倍**
 
 ### 2.2 成功项目共同特征分析
 
@@ -66,7 +66,7 @@
 | antigravity-awesome-skills | "1,309+ Installable Skills for Claude Code" | 实用性强，立即可安装 |
 | cognee | "Knowledge Engine for AI Agent Memory in 6 lines of code" | 极简+AI Memory热门 |
 | nanobot | "The Ultra-Lightweight OpenClaw" | OpenClaw生态背书 |
-| ontology-platform | "让每个Agent都拥有真正的成长能力" | **偏抽象，不够直接** |
+| clawra | "让每个Agent都拥有真正的成长能力" | **偏抽象，不够直接** |
 
 #### 特征2: README前三屏决定去留
 
@@ -78,7 +78,7 @@
 第4屏+: 深度文档/架构/贡献指南
 ```
 
-**当前ontology-platform README问题**：
+**当前clawra README问题**：
 - Hook在对比表格里，不够突出
 - 缺少Colab/演示视频链接
 - 缺少pip install一行启动
@@ -90,9 +90,9 @@
 |------|---------|--------|
 | cognee | AI Agent Memory | 6行代码极简 |
 | KAG | 专业领域知识库推理 | 逻辑形式化 |
-| ontology-platform | Agent成长框架 | **元认知+因果推理+置信度** |
+| clawra | Agent成长框架 | **元认知+因果推理+置信度** |
 
-**核心差异化**：ontology-platform的"元认知+因果推理"是当前AI Agent领域的**蓝海赛道**，竞争对手极少，但需要更清晰的叙事。
+**核心差异化**：clawra的"元认知+因果推理"是当前AI Agent领域的**蓝海赛道**，竞争对手极少，但需要更清晰的叙事。
 
 ### 2.3 知识图谱/本体推理赛道分析
 
@@ -103,12 +103,12 @@
 | Prometheus (EuniAI) | 970 | 代码知识图谱Agent | 代码映射+修复 |
 | hound | 745 | 代码审计+知识图谱 | 自适应知识图谱 |
 | SAG | 1,121 | SQL驱动RAG | 自动构建知识图谱 |
-| **ontology-platform** | 1 | Agent成长框架 | 元认知+因果推理+置信度 |
+| **clawra** | 1 | Agent成长框架 | 元认知+因果推理+置信度 |
 
 **关键洞察**：
 - cognee靠"极简"和"AI Memory"赛道成功（14k stars）
 - KAG靠"逻辑推理"学术背书成功（8.6k stars）
-- ontology-platform的"元认知+置信度自知"赛道**几乎无直接竞品**，是真正的蓝海
+- clawra的"元认知+置信度自知"赛道**几乎无直接竞品**，是真正的蓝海
 
 ---
 
@@ -138,13 +138,13 @@ Phase 3 (Day 8-14): 持续迭代 + Trending维持
 **README前300字优化模板**：
 
 ```markdown
-# ontology-platform
+# clawra
 > 垂直领域可信AI推理引擎 — 让Agent真正"知道自己知道什么"
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)]
 (你的Colab链接)
 
-pip install ontology-platform
+pip install clawra
 
 # 3行代码体验因果推理
 from ontology import Platform
@@ -224,7 +224,7 @@ result = ontology.reason("供应商A风险等级？", type="causal")
 | **RAG系统** | 大量 | 向量检索 | 幻觉问题无法解决 |
 | **Fine-tuning** | 大量 | 模型训练 | 成本高，无实时学习 |
 
-### 4.2 ontology-platform Unique Selling Points
+### 4.2 clawra Unique Selling Points
 
 ```
 USP 1: 元认知能力（知道自己知道什么）
@@ -255,7 +255,7 @@ USP 4: 垂直领域适配
 - Fine-tuning → 成本高，无法实时更新
 - Mem0 → 无推理能力，纯记忆
 
-**ontology-platform解决方案**：
+**clawra解决方案**：
 > "不是让AI记住更多，而是让AI知道自己知道什么、不知道什么——这才是消除幻觉的关键。"
 
 ---

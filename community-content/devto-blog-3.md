@@ -159,7 +159,7 @@ for step in result.reasoning_chain:
 
 ## 3. 规则学习的类型
 
-不是所有知识都需要用同一种方式学习。ontology-platform 支持多种学习模式：
+不是所有知识都需要用同一种方式学习。clawra 支持多种学习模式：
 
 ### 3.1 专家知识（Expert Knowledge）
 
@@ -227,7 +227,7 @@ ontology.sync_from_kb(
 
 这两个规则本身不冲突，但如果数据变了呢？
 
-ontology-platform 内置了**冲突检测机制**：
+clawra 内置了**冲突检测机制**：
 
 ```python
 ontology.learn(
@@ -334,14 +334,14 @@ RAG Agent 说：**"我记得类似的情况"**
 - 可追溯的推理过程
 - 置信度感知和元认知能力
 
-试试 ontology-platform。
+试试 clawra。
 
 ---
 
 ## 快速开始
 
 ```bash
-pip install ontology-platform
+pip install clawra
 ```
 
 ```python
@@ -370,7 +370,7 @@ print(f"Confidence: {result.confidence}")
 print(f"Reasoning: {result.reasoning_chain}")
 ```
 
-**GitHub**: https://github.com/wu-xiaochen/ontology-platform
+**GitHub**: https://github.com/wu-xiaochen/clawra
 
 ---
 

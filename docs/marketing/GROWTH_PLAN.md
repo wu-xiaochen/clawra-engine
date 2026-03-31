@@ -1,6 +1,6 @@
 # 🚀 30-Day Growth Plan: 1 → 1,000 Stars
 
-**Goal:** Grow ontology-platform from 1 to 1,000+ GitHub stars  
+**Goal:** Grow clawra from 1 to 1,000+ GitHub stars  
 **Timeline:** March 26 - April 25, 2026  
 **Core Strategy:** Product-led growth + targeted community engagement
 
@@ -126,7 +126,7 @@
 
 ### GitHub Optimization
 - Add "Star this repo if you find it useful" badge
-- Create showcase section (projects using ontology-platform)
+- Create showcase section (projects using clawra)
 - Pin best issues/discussions
 
 **Final Target:** 1,000+ stars

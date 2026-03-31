@@ -1,4 +1,4 @@
-# 3 Viral Demo Ideas for ontology-platform
+# 3 Viral Demo Ideas for clawra
 
 **Goal:** Create demos that are technically impressive AND highly shareable on social media
 
@@ -103,7 +103,7 @@ print(result.render_report())
 ### Distribution Strategy
 
 - **LinkedIn:** Post as "How we're using AI to reduce hiring bias"
-- **Twitter:** Thread showing before/after (traditional vs ontology-platform)
+- **Twitter:** Thread showing before/after (traditional vs clawra)
 - **Reddit:** r/recruiting, r/humanresources, r/cscareerquestions
 - **Demo Video:** 60-second Loom recording
 

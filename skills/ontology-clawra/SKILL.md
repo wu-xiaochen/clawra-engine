@@ -787,7 +787,7 @@ python3 scripts/ontology-clawra.py trace --decision decision_id
 发布流程：
 1. 本地测试验证
 2. 更新 CHANGELOG.md
-3. 提交到 ontology-platform 仓库
+3. 提交到 clawra 仓库
 4. 发布到 ClawHub（可选）
 5. 记录版本日志
 ```

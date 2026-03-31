@@ -1,4 +1,4 @@
-# ontology-platform CEO 战略报告 v2.0
+# clawra CEO 战略报告 v2.0
 ## 企业级SDK定位 × GitHub Top20 × 融资战略
 
 > **角色**: CEO（中书省）- 战略调研 + 资源获取
@@ -27,7 +27,7 @@
 
 ### 1.2 赛道定位矩阵
 
-| 维度 | Mem0 | LangChain | Fine-tuning | ontology-platform |
+| 维度 | Mem0 | LangChain | Fine-tuning | clawra |
 |------|------|-----------|-------------|-------------------|
 | 记忆存储 | ✅ | ❌ | ❌ | ✅ |
 | 应用构建 | ❌ | ✅ | ❌ | ⚠️（SDK层面）|
@@ -109,7 +109,7 @@ result = mem0.search("供应商A历史表现", user_id="agent_1")
 ❌ 生产环境问题多：大量用户反馈在生产中不稳定
 ```
 
-**ontology-platform的切入角度**：
+**clawra的切入角度**：
 > "LangChain是'如何构建'的工具；我们是'如何确保构建出来的是正确的'的保障。
 > LangChain帮你搭框架，我们帮你验证输出。"
 
@@ -143,7 +143,7 @@ result = mem0.search("供应商A历史表现", user_id="agent_1")
 ❌ 与LangChain一样问题：做出来了但不知道对不对
 ```
 
-**ontology-platform的切入角度**：
+**clawra的切入角度**：
 > "AutoGPT的愿景是对的（autonomous learning），但执行缺了一个关键层——
 > 没有结构化的知识表示和置信度传播，自主 agent 就是在盲目飞行。"
 
@@ -193,9 +193,9 @@ result = mem0.search("供应商A历史表现", user_id="agent_1")
 
 ---
 
-### 2.2 竞品弱点总结与 ontology-platform 差异化
+### 2.2 竞品弱点总结与 clawra 差异化
 
-| 竞品 | 核心缺陷 | ontology-platform 如何解决 |
+| 竞品 | 核心缺陷 | clawra 如何解决 |
 |------|---------|--------------------------|
 | **Mem0** | 无推理+无置信度 | 因果推理引擎 + 置信度传播 |
 | **LangChain** | RAG幻觉+过度工程化 | 推理层验证 + 轻量SDK |
@@ -205,7 +205,7 @@ result = mem0.search("供应商A历史表现", user_id="agent_1")
 
 ### 2.3 真正的蓝海：元认知+因果推理赛道
 
-经过对所有竞品的分析，**ontology-platform处于一个极好的差异化位置**：
+经过对所有竞品的分析，**clawra处于一个极好的差异化位置**：
 
 ```
 当前市场空白：
@@ -213,7 +213,7 @@ result = mem0.search("供应商A历史表现", user_id="agent_1")
 • 构建层（LangChain）：只有框架，无验证
 • 训练层（Fine-tuning）：只有权重，无实时
 
-ontology-platform的位置：
+clawra的位置：
 • 推理验证层（Reasoning Validation Layer）
 • 这是当前AI Agent缺失的关键一环
 ```
@@ -356,7 +356,7 @@ SDK/框架传播路径：
 
 **2026年3月数据（Python语言）：**
 
-| 榜单 | 进入门槛 | ontology-platform现状 |
+| 榜单 | 进入门槛 | clawra现状 |
 |------|---------|----------------------|
 | 日榜Top20 | ~80-150 stars/day | 0 stars/day |
 | 周榜Top20 | ~500-800 stars/week | ~0.5 stars/week |
@@ -398,7 +398,7 @@ SDK/框架传播路径：
 4. 端到端场景Demo（供应链/医疗/法律全流程）
 ```
 
-**当前ontology-platform的Demo缺口**：
+**当前clawra的Demo缺口**：
 - ❌ 没有Colab Notebook
 - ❌ 没有可视化Demo
 - ❌ 杀手级Example不够突出
@@ -449,7 +449,7 @@ SDK/框架传播路径：
 LangChain/vLLM能成功的关键之一：
 被其他项目依赖 → 形成网络效应
 
-ontology-platform的集成策略：
+clawra的集成策略：
 1. LangChain Plugin：让LangChain用户可以无缝接入
 2. LlamaIndex Integration：同样逻辑
 3. Semantic Kernel（Microsoft）：企业市场入口
@@ -590,7 +590,7 @@ VC最看重的3个问题：
 
 ### 5.2 融资阶段判断
 
-**当前ontology-platform的融资适配性分析：**
+**当前clawra的融资适配性分析：**
 
 ```
 适合融资的理由：
@@ -736,7 +736,7 @@ VC最看重的3个问题：
 "先让开发者用起来"
 
 无论融资、PR、社区运营，所有工作的核心都是：
-让尽可能多的开发者在GitHub上Star + 使用 ontology-platform
+让尽可能多的开发者在GitHub上Star + 使用 clawra
 
 只有开发者认可，才有后续一切。
 ```

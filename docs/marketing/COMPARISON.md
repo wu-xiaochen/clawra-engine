@@ -1,4 +1,4 @@
-# ontology-platform vs Other Solutions
+# clawra vs Other Solutions
 
 ## The Problem with Current AI Agents
 
@@ -21,11 +21,11 @@ Reality: Agent confused Supplier_C with Supplier_F (hallucination)
 
 **The agent retrieved similar text but couldn't verify truth.**
 
-## How ontology-platform is Different
+## How clawra is Different
 
 ```
 Traditional RAG: Retrieve → Generate → Hallucinate
-ontology-platform: Retrieve → Structure → Reason → Verify → Respond
+clawra: Retrieve → Structure → Reason → Verify → Respond
 ```
 
 ### Key Capabilities
@@ -48,7 +48,7 @@ ontology-platform: Retrieve → Structure → Reason → Verify → Respond
 
 ## Comparison Table
 
-| Feature | Traditional RAG | Mem0 | LangChain | ontology-platform |
+| Feature | Traditional RAG | Mem0 | LangChain | clawra |
 |---------|---------------|------|-----------|-------------------|
 | Memory persistence | ✅ | ✅ | ❌ | ✅ |
 | Vector storage | ✅ | ✅ | ❌ | ❌ |
@@ -77,7 +77,7 @@ ontology-platform: Retrieve → Structure → Reason → Verify → Respond
 - Rapid prototyping
 - Tool orchestration
 
-### Use ontology-platform when:
+### Use clawra when:
 - Decision-making with structured data
 - Risk assessment
 - Any use case where hallucination = costly
@@ -93,7 +93,7 @@ memories = memory.search(query, user_id)
 # Agent must trust and generate → hallucination risk
 ```
 
-### ontology-platform: Verified Reasoning
+### clawra: Verified Reasoning
 ```python
 result = reasoner.reason(
     query="Supplier_C risk level",
@@ -110,7 +110,7 @@ result = reasoner.reason(
 
 ## Real Impact
 
-| Scenario | With Traditional RAG | With ontology-platform |
+| Scenario | With Traditional RAG | With clawra |
 |----------|---------------------|------------------------|
 | Supplier risk query | 30% hallucination rate | <5% uncertainty flagged |
 | Compliance audit | Can't explain decisions | Full reasoning trace |
@@ -121,12 +121,12 @@ result = reasoner.reason(
 
 ```bash
 # 5-minute Colab
-# https://colab.research.google.com/github/wu-xiaochen/ontology-platform
+# https://colab.research.google.com/github/wu-xiaochen/clawra
 
-pip install ontology-platform
+pip install clawra
 PYTHONPATH=src python examples/demo_supplier_monitor.py
 ```
 
 ## Complementary, Not Competitive
 
-Note: ontology-platform can complement Mem0 by adding reasoning layer on top of memory. These tools can be used together for different aspects of agent memory.
+Note: clawra can complement Mem0 by adding reasoning layer on top of memory. These tools can be used together for different aspects of agent memory.

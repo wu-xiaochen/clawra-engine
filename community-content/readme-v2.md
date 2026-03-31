@@ -2,7 +2,7 @@
 
 ## 诊断：当前 README 缺少什么
 
-根据对 GitHub Trending Top 20 项目的分析，当前 ontology-platform README 的主要问题：
+根据对 GitHub Trending Top 20 项目的分析，当前 clawra README 的主要问题：
 
 ### 缺失清单
 
@@ -32,7 +32,7 @@
 # 最终方案：建议用 Excalidraw/Figma 制作 1280x640 的 Banner 图
 
 # Banner 建议内容：
-# - 左侧：ontology-platform Logo
+# - 左侧：clawra Logo
 # - 中间：核心 Hook "Agents that learn. Agents that grow."
 # - 右侧：一个微型知识图谱可视化（节点+边的动画效果）
 # - 底部：pip install one-liner
@@ -41,13 +41,13 @@
 **Banner 替代方案（纯 Markdown）：**
 
 ```markdown
-# ontology-platform
+# clawra
 
 ### 让每个 Agent 都拥有真正的成长能力
 
 > We don't build agents. We give agents the ability to evolve.
 
-[🔗 Quick Start](#-quick-start) · [📖 Docs](#-documentation) · [🐛 Issues](https://github.com/wu-xiaochen/ontology-platform/issues) · [💬 Discord](YOUR_DISCORD_LINK)
+[🔗 Quick Start](#-quick-start) · [📖 Docs](#-documentation) · [🐛 Issues](https://github.com/wu-xiaochen/clawra/issues) · [💬 Discord](YOUR_DISCORD_LINK)
 
 ```
 ```
@@ -59,12 +59,12 @@
 **在 Title 下方添加：**
 
 ```markdown
-[![PyPI Version](https://img.shields.io/pypi/v/ontology-platform?color=blue)](https://pypi.org/project/ontology-platform/)
-[![Python Versions](https://img.shields.io/pypi/pythonversions/ontology-platform?color=blue)](https://pypi.org/project/ontology-platform/)
-[![License](https://img.shields.io/github/license/wu-xiaochen/ontology-platform?color=green)](LICENSE)
-[![CI Status](https://img.shields.io/github/actions/workflow/status/wu-xiaochen/ontology-platform/ci.yml?branch=main&label=CI)](https://github.com/wu-xiaochen/ontology-platform/actions)
-[![Downloads](https://img.shields.io/pypi/dm/ontology-platform?color=orange)](https://pypi.org/project/ontology-platform/)
-[![Stars](https://img.shields.io/github/stars/wu-xiaochen/ontology-platform?color=yellow)](https://github.com/wu-xiaochen/ontology-platform/stargazers)
+[![PyPI Version](https://img.shields.io/pypi/v/clawra?color=blue)](https://pypi.org/project/clawra/)
+[![Python Versions](https://img.shields.io/pypi/pythonversions/clawra?color=blue)](https://pypi.org/project/clawra/)
+[![License](https://img.shields.io/github/license/wu-xiaochen/clawra?color=green)](LICENSE)
+[![CI Status](https://img.shields.io/github/actions/workflow/status/wu-xiaochen/clawra/ci.yml?branch=main&label=CI)](https://github.com/wu-xiaochen/clawra/actions)
+[![Downloads](https://img.shields.io/pypi/dm/clawra?color=orange)](https://pypi.org/project/clawra/)
+[![Stars](https://img.shields.io/github/stars/wu-xiaochen/clawra?color=yellow)](https://github.com/wu-xiaochen/clawra/stargazers)
 ```
 
 **效果预览：**
@@ -80,7 +80,7 @@
 **Install (30 seconds):**
 
 ```bash
-pip install ontology-platform
+pip install clawra
 ```
 
 **Your first ontological reasoning (5 lines):**
@@ -123,11 +123,11 @@ print(f"Reasoning chain: {result.reasoning_chain}")
 **改进方案：**
 
 ```markdown
-## Why ontology-platform?
+## Why clawra?
 
 ### Comparison: Memory-Only vs. Ontological Reasoning
 
-| Capability | Traditional RAG + LLM | Mem0 | ontology-platform |
+| Capability | Traditional RAG + LLM | Mem0 | clawra |
 |-----------|----------------------|------|-------------------|
 | **Persistent memory** | ✅ | ✅ | ✅ |
 | **Structured knowledge graph** | ❌ | ❌ | ✅ |
@@ -214,7 +214,7 @@ result = pricing_agent.reason(
 
 ```python
 # Traditional approach: retrain the model
-# ontology-platform approach: update the rule
+# clawra approach: update the rule
 
 ontology.learn(
     from_source="error_log",
@@ -284,7 +284,7 @@ flowchart TB
 ```bash
 $ python demo.py
 
-ontology-platform v0.1.0
+clawra v0.1.0
 Domain: procurement | Entities: 142 | Rules: 28 | Confidence threshold: 0.60
 
 > reason: Why did supplier quality decline last quarter?
@@ -319,21 +319,21 @@ Risk level: HIGH
 We welcome contributions! Here's how to get started:
 
 ```bash
-git clone https://github.com/wu-xiaochen/ontology-platform
-cd ontology-platform
+git clone https://github.com/wu-xiaochen/clawra
+cd clawra
 pip install -e ".[dev]"
 pytest
 ```
 
 **Ways to contribute:**
-- 🐛 Report bugs via [GitHub Issues](https://github.com/wu-xiaochen/ontology-platform/issues)
+- 🐛 Report bugs via [GitHub Issues](https://github.com/wu-xiaochen/clawra/issues)
 - 💡 Feature requests and proposals
 - 📖 Improve documentation
 - 🔧 Submit PRs (check `CONTRIBUTING.md` for guidelines)
 - 🧪 Add test cases for new reasoning capabilities
 
 **Current priorities:**
-- [ ] M1: Core Reasoning Engine v1.0 ([Issue #2](https://github.com/wu-xiaochen/ontology-platform/issues/2))
+- [ ] M1: Core Reasoning Engine v1.0 ([Issue #2](https://github.com/wu-xiaochen/clawra/issues/2))
 - [ ] Improve causal reasoning coverage
 - [ ] Add OpenAI + Anthropic integration examples
 ```
@@ -345,17 +345,17 @@ pytest
 合并以上所有改进，形成完整 README：
 
 ```markdown
-# ontology-platform
+# clawra
 
 ### 让每个 Agent 都拥有真正的成长能力
 
 > We don't build agents. We give agents the ability to evolve.
 
-[![PyPI](https://img.shields.io/pypi/v/ontology-platform?color=blue)](https://pypi.org/project/ontology-platform/)
-[![Python](https://img.shields.io/pypi/pythonversions/ontology-platform?color=blue)](https://pypi.org/project/ontology-platform/)
-[![License](https://img.shields.io/github/license/wu-xiaochen/ontology-platform?color=green)](LICENSE)
-[![CI](https://img.shields.io/github/actions/workflow/status/wu-xiaochen/ontology-platform/ci.yml?branch=main&label=CI)](https://github.com/wu-xiaochen/ontology-platform/actions)
-[![Downloads](https://img.shields.io/pypi/dm/ontology-platform?color=orange)](https://pypi.org/project/ontology-platform/)
+[![PyPI](https://img.shields.io/pypi/v/clawra?color=blue)](https://pypi.org/project/clawra/)
+[![Python](https://img.shields.io/pypi/pythonversions/clawra?color=blue)](https://pypi.org/project/clawra/)
+[![License](https://img.shields.io/github/license/wu-xiaochen/clawra?color=green)](LICENSE)
+[![CI](https://img.shields.io/github/actions/workflow/status/wu-xiaochen/clawra/ci.yml?branch=main&label=CI)](https://github.com/wu-xiaochen/clawra/actions)
+[![Downloads](https://img.shields.io/pypi/dm/clawra?color=orange)](https://pypi.org/project/clawra/)
 
 ## ⚡ Quick Start
 
@@ -369,7 +369,7 @@ pytest
 
 [Architecture Section - 见上方方案 6]
 
-## Why ontology-platform?
+## Why clawra?
 
 [Comparison Table - 见上方方案 4]
 

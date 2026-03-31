@@ -3,13 +3,13 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "ontology-platform"
-version = "0.9.0-alpha"
-description = "Agent growth SDK — memory, reasoning, and metacognition for AI agents"
+name = "clawra"
+version = "1.0.0"
+description = "Clawra: Cognitive Logical Agent with Reasoning & Autonomy"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
-    {name = "Wu Xiaochen", email = "wu@ontology-platform.dev"}
+    {name = "Wu Xiaochen", email = "wu@clawra.ai"}
 ]
 keywords = ["AI", "agents", "ontology", "reasoning", "metacognition", "knowledge-graph", "LLM"]
 classifiers = [
@@ -49,11 +49,11 @@ neo4j = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/wu-xiaochen/ontology-platform"
-Documentation = "https://github.com/wu-xiaochen/ontology-platform#readme"
-Repository = "https://github.com/wu-xiaochen/ontology-platform"
-Issues = "https://github.com/wu-xiaochen/ontology-platform/issues"
-Changelog = "https://github.com/wu-xiaochen/ontology-platform/releases"
+Homepage = "https://github.com/wu-xiaochen/clawra"
+Documentation = "https://github.com/wu-xiaochen/clawra#readme"
+Repository = "https://github.com/wu-xiaochen/clawra"
+Issues = "https://github.com/wu-xiaochen/clawra/issues"
+Changelog = "https://github.com/wu-xiaochen/clawra/releases"
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -357,4 +357,4 @@ AlcoholicBeverage
 
 ---
 
-*本本体由 ontology-platform 自动生成*
+*本本体由 clawra 自动生成*

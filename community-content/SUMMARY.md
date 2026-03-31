@@ -49,7 +49,7 @@
 
 ### Hacker News — Show HN
 - **最佳时机**：周中 9-11 AM PT
-- **标题**：`Show HN: ontology-platform — give your AI agents the ability to learn and reason at runtime`
+- **标题**：`Show HN: clawra — give your AI agents the ability to learn and reason at runtime`
 - **核心钩子**：No vector DB, 5MB install, runtime learning without retraining
 - **语气**：诚实，不夸张，关注开发者实际问题
 

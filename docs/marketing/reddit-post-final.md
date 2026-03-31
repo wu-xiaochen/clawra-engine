@@ -1,8 +1,8 @@
-# Show HN: ontology-platform – The first agent framework with a built-in bullshit detector
+# Show HN: clawra – The first agent framework with a built-in bullshit detector
 
 **Submitted by:** u/wu_xiaochen  
-**Project:** https://github.com/wu-xiaochen/ontology-platform  
-**Live Demo:** https://colab.research.google.com/github/wu-xiaochen/ontology-platform/blob/main/ontology_platform_quickstart.ipynb
+**Project:** https://github.com/wu-xiaochen/clawra  
+**Live Demo:** https://colab.research.google.com/github/wu-xiaochen/clawra/blob/main/ontology_platform_quickstart.ipynb
 
 ---
 
@@ -14,7 +14,7 @@ Traditional frameworks (LangChain, Mem0, RAG systems) give agents memory and ret
 
 ## What I Built
 
-**ontology-platform** is an agent framework that adds:
+**clawra** is an agent framework that adds:
 
 1. **Confidence Scoring** - Every answer comes with a confidence level (0.0 to 1.0)
 2. **Reasoning Traces** - You can see exactly how the agent reached its conclusion
@@ -45,7 +45,7 @@ if result.confidence < 0.6:
 
 ## How It's Different
 
-| Feature | LangChain | Mem0 | ontology-platform |
+| Feature | LangChain | Mem0 | clawra |
 |---------|-----------|------|-------------------|
 | Memory | ❌ | ✅ | ✅ |
 | Reasoning | ❌ | ❌ | ✅ |
@@ -64,10 +64,10 @@ Think of it as **RAG + reasoning engine + metacognition layer**.
 ## Try It
 
 ```bash
-pip install ontology-platform
+pip install clawra
 ```
 
-Or play with the [Colab demo](https://colab.research.google.com/github/wu-xiaochen/ontology-platform/blob/main/ontology_platform_quickstart.ipynb) (5 minutes).
+Or play with the [Colab demo](https://colab.research.google.com/github/wu-xiaochen/clawra/blob/main/ontology_platform_quickstart.ipynb) (5 minutes).
 
 ## Questions for the Community
 
@@ -91,7 +91,7 @@ This is my first major open-source project. Would love honest feedback on:
 - Documentation (what's confusing?)
 - Use cases (what would you build with this?)
 
-GitHub: https://github.com/wu-xiaochen/ontology-platform
+GitHub: https://github.com/wu-xiaochen/clawra
 
 ---
 

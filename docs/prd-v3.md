@@ -1,4 +1,4 @@
-# ontology-platform 产品需求文档（PRD v3.0）
+# clawra 产品需求文档（PRD v3.0）
 
 **版本**：v3.0
 **更新**：2026-03-19
@@ -162,7 +162,7 @@ ontology.metacognition.check_boundary(
 
 ```
 ┌─────────────────────────────────────┐
-│         ontology-platform            │
+│         clawra            │
 ├─────────────┬─────────────┬─────────┤
 │   Memory    │  Reasoning  │   Meta  │
 │   System    │   Engine    │   Cog   │
@@ -191,7 +191,7 @@ ontology.metacognition.check_boundary(
 
 ### 5.1 竞品对比
 
-| 功能 | ontology-platform | Mem0 | RAG | 知识图谱 | Fine-tuning |
+| 功能 | clawra | Mem0 | RAG | 知识图谱 | Fine-tuning |
 |------|-------------------|------|-----|---------|------------|
 | **学习能力** | ✅ 实时 | ⚠️ API | ❌ | ❌ | ⚠️ 慢 |
 | **逻辑推理** | ✅ | ❌ | ❌ | ⚠️ | ❌ |
@@ -203,9 +203,9 @@ ontology.metacognition.check_boundary(
 ### 5.2 差异化定位
 
 ```
-ontology-platform ≠ 知识图谱
-ontology-platform ≠ RAG
-ontology-platform = Agent成长平台
+clawra ≠ 知识图谱
+clawra ≠ RAG
+clawra = Agent成长平台
                         │
                         ├── 记忆（学习）
                         ├── 推理（逻辑+因果）
@@ -229,7 +229,7 @@ ontology-platform = Agent成长平台
 
 ```json
 {
-  "mcpServer": "ontology-platform",
+  "mcpServer": "clawra",
   "version": "1.0.0",
   "protocol": "mcp",
   "capabilities": [

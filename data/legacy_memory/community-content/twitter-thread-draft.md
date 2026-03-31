@@ -1,7 +1,7 @@
-# Twitter/X Thread Drafts for ontology-platform
+# Twitter/X Thread Drafts for clawra
 
-> **Project**: ontology-platform — Vertical domain Trusted AI inference engine based on Palantir's ontology, eliminating AI hallucinations
-> **Repo**: https://github.com/wu-xiaochen/ontology-platform
+> **Project**: clawra — Vertical domain Trusted AI inference engine based on Palantir's ontology, eliminating AI hallucinations
+> **Repo**: https://github.com/wu-xiaochen/clawra
 
 ---
 
@@ -15,7 +15,7 @@ LLMs can't tell you when they're guessing vs. knowing.
 
 So I built a reasoning layer that does exactly that.
 
-🧵 A thread on ontology-platform:
+🧵 A thread on clawra:
 ```
 
 **Tweet 2:**
@@ -23,7 +23,7 @@ So I built a reasoning layer that does exactly that.
 Traditional RAG:
 Query → LLM → "The supplier is risky" (may be hallucinated)
 
-With ontology-platform:
+With clawra:
 Query → Reasoning Engine → "The supplier is risky (confidence 0.78, based on 3 prior failures + causal chain)"
 ```
 
@@ -92,7 +92,7 @@ Agents learn from experience during runtime.
 ```
 Architecture overview:
 
-ontology-platform
+clawra
 ├── 🟦 Memory-System (OWL/RDF + vectors)
 ├── 🟨 Reasoning-Engine (rules + causal)
 └── 🟥 Meta-Cognition (confidence + bounds)
@@ -104,7 +104,7 @@ Formal semantics > probabilistic matching
 ```
 Comparison:
 
-| | RAG | Mem0 | ontology-platform |
+| | RAG | Mem0 | clawra |
 |--|-----|-----|-----------------|
 | Reasoning | ❌ | ❌ | ✅ |
 | Confidence | ❌ | ❌ | ✅ |
@@ -118,7 +118,7 @@ Early stage, but the core reasoning engine is working.
 
 If you're building AI where hallucinations are costly (legal, medical, procurement), would love your feedback.
 
-GitHub: https://github.com/wu-xiaochen/ontology-platform
+GitHub: https://github.com/wu-xiaochen/clawra
 
 ⭐ appreciated if you find it interesting!
 ```
@@ -162,7 +162,7 @@ Key difference:
 
 Traditional: "Based on the retrieved documents, the answer is X"
 
-ontology-platform: "Based on causal chain [A → B → C], with 0.82 confidence, the answer is X. Sources: doc1, doc2, doc3"
+clawra: "Based on causal chain [A → B → C], with 0.82 confidence, the answer is X. Sources: doc1, doc2, doc3"
 ```
 
 **Tweet 5:**
@@ -199,7 +199,7 @@ Still v0.x — collecting feedback.
 ```
 If you're building serious AI applications and hallucination is a real problem for you, I'd love to hear your use case.
 
-GitHub: https://github.com/wu-xiaochen/ontology-platform
+GitHub: https://github.com/wu-xiaochen/clawra
 DM open if you want to chat.
 ```
 
@@ -213,7 +213,7 @@ I built an AI that knows when it's wrong.
 
 Not through prompting. Through structured ontological reasoning.
 
-Here's ontology-platform 🧵
+Here's clawra 🧵
 ```
 
 **Tweet 2:**
@@ -227,7 +227,7 @@ No verification. No confidence. No "I don't know."
 
 **Tweet 3:**
 ```
-What ontology-platform does differently:
+What clawra does differently:
 
 • OWL/RDF knowledge graphs (formal semantics)
 • Causal + logical reasoning engine
@@ -258,7 +258,7 @@ If you've been burned by AI hallucinations in production — you know why this m
 
 Early stage, feedback welcome.
 
-https://github.com/wu-xiaochen/ontology-platform ⭐
+https://github.com/wu-xiaochen/clawra ⭐
 ```
 
 ---

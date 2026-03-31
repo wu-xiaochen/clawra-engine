@@ -3,7 +3,7 @@
 AI Hiring Assistant Demo
 =========================
 
-Demonstrates ontology-platform's confidence-aware reasoning for candidate assessment.
+Demonstrates clawra's confidence-aware reasoning for candidate assessment.
 
 Features:
 - Confidence-scored candidate evaluation
@@ -25,11 +25,11 @@ try:
     from ontology import Agent
     from ontology.confidence import ConfidenceLevel
 except ImportError:
-    print("❌ ontology-platform not installed")
+    print("❌ clawra not installed")
     print("\nInstall from source:")
     print("  pip install -e .")
     print("\nOr from PyPI:")
-    print("  pip install ontology-platform")
+    print("  pip install clawra")
     sys.exit(1)
 
 
@@ -274,7 +274,7 @@ def main():
     
     print("\n" + "=" * 70)
     print("🤖 AI HIRING ASSISTANT DEMO")
-    print("Powered by ontology-platform")
+    print("Powered by clawra")
     print("=" * 70 + "\n")
     
     # Initialize agent

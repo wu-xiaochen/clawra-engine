@@ -13,12 +13,12 @@ So I've been working on a persistent problem in LLM agents: hallucinations.
 
 Most agent frameworks rely on RAG or fine-tuning to add knowledge, but they don't actually *reason* about it. The agent can retrieve information, but it can't tell you if that information is reliable or how it relates to other facts.
 
-That's why I built **ontology-platform** - an agent framework with built-in ontological reasoning.
+That's why I built **clawra** - an agent framework with built-in ontological reasoning.
 
 ## The Core Problem
 
 Traditional RAG retrieval → generates response (may be hallucinated)
-ontology-platform: retrieval → reasoning chain → confidence score → validated response
+clawra: retrieval → reasoning chain → confidence score → validated response
 
 ## Key Features
 
@@ -35,7 +35,7 @@ result = ontology.reason("Why did the supplier quality decline?")
 
 ## Comparison
 
-| Feature | RAG | Mem0 | ontology-platform |
+| Feature | RAG | Mem0 | clawra |
 |---------|-----|------|-------------------|
 | Hallucination elimination | ❌ | ❌ | ✅ |
 | Reasoning | ❌ | ❌ | ✅ |
@@ -48,7 +48,7 @@ result = ontology.reason("Why did the supplier quality decline?")
 - What do you think about structured ontological knowledge vs vector retrieval?
 - Would love feedback on the approach!
 
-GitHub: https://github.com/wu-xiaochen/ontology-platform
+GitHub: https://github.com/wu-xiaochen/clawra
 ```
 
 ## v5.0 新增特性（2026-03-24）

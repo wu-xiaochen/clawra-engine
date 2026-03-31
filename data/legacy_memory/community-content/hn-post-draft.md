@@ -1,13 +1,13 @@
-# Hacker News Post Drafts for ontology-platform
+# Hacker News Post Drafts for clawra
 
-> **Project**: ontology-platform — Vertical domain Trusted AI inference engine based on Palantir's ontology, eliminating AI hallucinations
-> **Repo**: https://github.com/wu-xiaochen/ontology-platform
+> **Project**: clawra — Vertical domain Trusted AI inference engine based on Palantir's ontology, eliminating AI hallucinations
+> **Repo**: https://github.com/wu-xiaochen/clawra
 
 ---
 
 ## 🤔 Ask HN vs Show HN Decision
 
-| Type | Best When | Fit for ontology-platform |
+| Type | Best When | Fit for clawra |
 |------|-----------|---------------------------|
 | **Ask HN** | Seeking feedback, discussing a problem | ✅ Good for asking "is this approach right?" |
 | **Show HN** | Sharing a finished project you built | ✅ **Better fit** — this is a working project |
@@ -39,7 +39,7 @@ The problem: the LLM has no way to verify if the retrieved context is consistent
 
 **The approach:**
 
-ontology-platform adds a reasoning layer between retrieval and generation:
+clawra adds a reasoning layer between retrieval and generation:
 
 ```
 Query → Ontology Reasoning Engine → Confidence-Scored, Traced Response
@@ -83,7 +83,7 @@ print(f"Knows its limits: {result.has_bounds}") # → True
 **Architecture:**
 
 ```
-ontology-platform
+clawra
 │
 ├── 🟦 Memory-System (Ontological Storage)
 │   ├── OWL/RDF triple store
@@ -109,7 +109,7 @@ ontology-platform
 
 **Status:** v0.x — working codebase, early adopters welcome.
 
-GitHub: https://github.com/wu-xiaochen/ontology-platform
+GitHub: https://github.com/wu-xiaochen/clawra
 
 Questions about the architecture, the hallucination problem, or why I think the reasoning layer is the right place to solve this — happy to discuss.
 ```
@@ -136,7 +136,7 @@ Title: Show HN: I built an AI that can say "I don't know" — eliminating halluc
 
 The hallucination problem isn't going away with bigger models. The real issue is that LLMs have no internal mechanism to distinguish "I know this" from "I'm guessing."
 
-I spent the last few months building **ontology-platform** — a different approach that puts reasoning in a structured layer, separate from the model.
+I spent the last few months building **clawra** — a different approach that puts reasoning in a structured layer, separate from the model.
 
 **The core insight:**
 
@@ -144,7 +144,7 @@ Instead of trying to make the LLM more accurate through prompting or fine-tuning
 
 ```
 Traditional:  Query → LLM → Response (may hallucinate)
-ontology-platform: Query → Reasoning Engine → Response + Confidence + Trace
+clawra: Query → Reasoning Engine → Response + Confidence + Trace
 ```
 
 **The reasoning engine does:**
@@ -181,7 +181,7 @@ else:
 | RAG | ❌ | ❌ | ❌ |
 | Fine-tuning | ❌ | ❌ | ❌ |
 | Prompt engineering | ⚠️ | ❌ | ❌ |
-| ontology-platform | ✅ | ✅ | ✅ |
+| clawra | ✅ | ✅ | ✅ |
 
 **Why this matters:**
 
@@ -192,7 +192,7 @@ In high-stakes domains (legal, medical, procurement), a hallucinated answer isn'
 
 Still early (v0.x), but the core reasoning engine is working. Would love feedback from anyone building in high-stakes AI domains.
 
-GitHub: https://github.com/wu-xiaochen/ontology-platform
+GitHub: https://github.com/wu-xiaochen/clawra
 ```
 
 ---

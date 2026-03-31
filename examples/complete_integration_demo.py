@@ -9,7 +9,7 @@ Complete Integration Demo
 4. 数据导出
 
 运行方式:
-    cd ontology-platform
+    cd clawra
     PYTHONPATH=src python examples/complete_integration_demo.py
 """
 

@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to ontology-platform will be documented in this file.
+All notable changes to clawra will be documented in this file.
 
 ## [1.2.0] - 2026-03-24
 

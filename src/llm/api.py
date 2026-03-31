@@ -3,7 +3,7 @@ from typing import Dict, Any
 from pydantic import BaseModel
 from datetime import datetime
 
-app = FastAPI(title="Ontology Platform API", version="1.0.0")
+app = FastAPI(title="Clawra API", version="1.0.0")
 
 class OntologyQuery(BaseModel):
     domain: str
@@ -19,7 +19,7 @@ class OntologyResult(BaseModel):
 
 @app.get("/")
 async def root():
-    return {"message": "Ontology Platform API", "version": "1.0.0"}
+    return {"message": "Clawra API", "version": "1.0.0"}
 
 @app.post("/query")
 async def query_ontology(query: OntologyQuery):

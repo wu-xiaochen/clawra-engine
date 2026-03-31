@@ -1,4 +1,4 @@
-# 🧵 Twitter Thread Series: ontology-platform Launch
+# 🧵 Twitter Thread Series: clawra Launch
 
 **Account:** @ontology_platform (create if not exists)  
 **Tone:** Confident but humble, educational, slightly provocative  
@@ -65,7 +65,7 @@ AI agents? They're all vibes.
 
 ### Tweet 5/7 (The Solution)
 ```
-We built ontology-platform to fix this.
+We built clawra to fix this.
 
 Every answer comes with:
 ✓ Confidence score (0.0 to 1.0)
@@ -95,7 +95,7 @@ Big difference.
 We open-sourced this because hallucination is everyone's problem.
 
 Try it:
-→ GitHub: https://github.com/wu-xiaochen/ontology-platform
+→ GitHub: https://github.com/wu-xiaochen/clawra
 → Live Demo: [Colab link]
 → Docs: [Documentation link]
 
@@ -299,7 +299,7 @@ This won't win every demo. But it'll prevent disasters.
 
 That's the goal.
 
-Try it: https://github.com/wu-xiaochen/ontology-platform
+Try it: https://github.com/wu-xiaochen/clawra
 ```
 
 ---

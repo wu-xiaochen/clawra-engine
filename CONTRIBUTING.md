@@ -1,6 +1,6 @@
 # 贡献指南
 
-感谢您对 ontology-platform 的兴趣！我们欢迎各种形式的贡献。
+感谢您对 clawra 的兴趣！我们欢迎各种形式的贡献。
 
 ## 如何贡献
 
@@ -29,7 +29,7 @@
 ## 项目结构
 
 ```
-ontology-platform/
+clawra/
 ├── domain_expert/     # 领域本体库
 ├── src/               # 核心源代码
 ├── scripts/           # 脚本工具

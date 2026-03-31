@@ -10,7 +10,7 @@
 
 最好的 Demo 是这样的：开发者看 30 秒，就能说出"这个我需要"。
 
-针对 ontology-platform 的"Agent 成长"核心价值，我们需要的 Demo 是：
+针对 clawra 的"Agent 成长"核心价值，我们需要的 Demo 是：
 
 **"一个会从错误中学习的 Agent"** —— 而不是"一个能存储向量相似内容的 Agent"。
 
@@ -55,7 +55,7 @@
 ```python
 #!/usr/bin/env python3
 """
-Ontology Platform Demo: Autonomous Supplier Monitor
+Clawra Demo: Autonomous Supplier Monitor
 展示 Agent 如何从供应商数据中学习、推理、并自我进化
 
 运行方式: python demo/supplier_monitor.py
@@ -83,7 +83,7 @@ def generate_mock_supplier_data():
 
 def run_demo():
     print("=" * 60)
-    print("ontology-platform Demo: Autonomous Supplier Monitor")
+    print("clawra Demo: Autonomous Supplier Monitor")
     print("=" * 60)
     
     # 初始化 Agent
@@ -230,7 +230,7 @@ class Agent:
 
 ```
 ======================================================================
-ontology-platform Demo: Autonomous Supplier Monitor
+clawra Demo: Autonomous Supplier Monitor
 ======================================================================
 
 [1] Loading 5 suppliers into ontology...
@@ -301,7 +301,7 @@ Demo Complete!
 ### 技术栈
 
 - **前端**: React + D3.js（知识图谱可视化）+ TailwindCSS
-- **后端**: FastAPI + ontology-platform Python SDK
+- **后端**: FastAPI + clawra Python SDK
 - **部署**: Docker one-liner
 
 ### 架构
@@ -311,7 +311,7 @@ Browser (React + D3.js)
        ↕ WebSocket
 FastAPI Server
        ↕
-ontology-platform Engine
+clawra Engine
 ```
 
 ---

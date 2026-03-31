@@ -8,7 +8,7 @@ Confidence-Reasoning Demo
 - 事实验证和不确定性标注
 
 运行方式：
-    cd ontology-platform
+    cd clawra
     PYTHONPATH=src python examples/demo_confidence_reasoning.py
 """
 

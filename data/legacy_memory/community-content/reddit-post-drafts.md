@@ -1,7 +1,7 @@
-# Reddit Post Drafts for ontology-platform
+# Reddit Post Drafts for clawra
 
-> **Project**: ontology-platform — Vertical domain Trusted AI inference engine based on Palantir's ontology, eliminating AI hallucinations
-> **Repo**: https://github.com/wu-xiaochen/ontology-platform
+> **Project**: clawra — Vertical domain Trusted AI inference engine based on Palantir's ontology, eliminating AI hallucinations
+> **Repo**: https://github.com/wu-xiaochen/clawra
 
 ---
 
@@ -40,7 +40,7 @@ The LLM has no way to verify if what it's generating is actually consistent with
 
 **What I built:**
 
-ontology-platform is an agent framework with built-in ontological reasoning. Instead of blind retrieval → generate, it does:
+clawra is an agent framework with built-in ontological reasoning. Instead of blind retrieval → generate, it does:
 
 ```
 retrieval → structured reasoning chain → confidence score → validated response
@@ -82,7 +82,7 @@ if result.confidence < 0.6:
 
 **Comparison:**
 
-| | Traditional RAG | Mem0 | ontology-platform |
+| | Traditional RAG | Mem0 | clawra |
 |--|----------------|------|-------------------|
 | Hallucination elimination | ❌ | ❌ | ✅ |
 | Structured reasoning | ❌ | ❌ | ✅ |
@@ -91,7 +91,7 @@ if result.confidence < 0.6:
 
 Happy to answer questions — been working on this for a few months and genuinely curious if others are tackling this at the reasoning layer too.
 
-GitHub: https://github.com/wu-xiaochen/ontology-platform
+GitHub: https://github.com/wu-xiaochen/clawra
 
 AMA!
 ```
@@ -121,7 +121,7 @@ Mods: Happy to adjust if this isn't the right format — just wanting to share s
 
 Humans don't just memorize — we learn, reason causally, and know when we're uncertain. Our agents today? They mostly just retrieve and regurgitate.
 
-I spent the last few months building **ontology-platform**, inspired by Palantir's ontology work, to give agents those capabilities.
+I spent the last few months building **clawra**, inspired by Palantir's ontology work, to give agents those capabilities.
 
 **What it does (in plain terms):**
 
@@ -130,7 +130,7 @@ It does: "Here's structured knowledge with reasoning rules — here's my answer 
 
 **Real example:**
 
-A procurement AI using ontology-platform doesn't just say "the supplier is risky." It says:
+A procurement AI using clawra doesn't just say "the supplier is risky." It says:
 
 > "Based on 3 prior failed deliveries + 2 late payments + the causal chain: late payments → cash flow stress → reduced quality control → supplier risk score 0.78. I'm 78% confident. You may want to verify independently."
 
@@ -163,7 +163,7 @@ print(f"Reasoning: {result.trace}")        # → full chain
 
 This is still early (v0.x) — looking for feedback from anyone building serious AI applications where hallucinations are costly.
 
-GitHub: https://github.com/wu-xiaochen/ontology-platform
+GitHub: https://github.com/wu-xiaochen/clawra
 
 Questions, feedback, criticism all welcome!
 ```
@@ -190,7 +190,7 @@ This leads to a fundamental problem: hallucinations aren't just "wrong answers,"
 
 **Approach:**
 
-ontology-platform attempts to solve this by moving reasoning OUT of the model's weights and into a structured reasoning layer:
+clawra attempts to solve this by moving reasoning OUT of the model's weights and into a structured reasoning layer:
 
 ```
 Input Query → Structured Retrieval → Ontology Reasoning Engine → Confidence-Scored Response
@@ -221,7 +221,7 @@ Input Query → Structured Retrieval → Ontology Reasoning Engine → Confidenc
 
 Paper/benchmarks coming soon. Code is live:
 
-https://github.com/wu-xiaochen/ontology-platform
+https://github.com/wu-xiaochen/clawra
 ```
 
 ---

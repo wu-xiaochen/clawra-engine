@@ -1,7 +1,7 @@
 # Partial Open Source License
 # 部分开源协议 v1.0
 
-**ontology-platform - Agent成长框架**
+**clawra - Agent成长框架**
 
 Copyright (c) 2026 wu-xiaochen. All rights reserved.
 
@@ -33,7 +33,7 @@ Copyright (c) 2026 wu-xiaochen. All rights reserved.
 我们相信：AI Agent应该像孩子一样拥有真正的成长能力，
 而不是只能在训练中获得能力。
 
-ontology-platform是这个信念的生产级实现。
+clawra是这个信念的生产级实现。
 
 我们选择"部分开源"是因为：
 1. 确保技术不被用于制造"AI幻觉"产品
@@ -55,7 +55,7 @@ ontology-platform是这个信念的生产级实现。
 
 ## 商标声明
 
-"ontology-platform" 是注册商标。
+"clawra" 是注册商标。
 未经授权不得用于商业产品名称。
 
 ---

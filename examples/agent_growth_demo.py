@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-ontology-platform Agent Growth Demo
+clawra Agent Growth Demo
 ====================================
 展示Agent三大成长能力：
 1. 学习特性：运行时学习新规则
@@ -8,7 +8,7 @@ ontology-platform Agent Growth Demo
 3. 元认知：置信度自知 + 知识边界识别
 
 运行方式:
-    cd /path/to/ontology-platform
+    cd /path/to/clawra
     python examples/agent_growth_demo.py
 
 输出: 完整的Agent成长演示，包含推理链追踪和置信度标注
@@ -330,7 +330,7 @@ class GrowingAgent:
         # 内置初始知识
         self._init_knowledge()
         
-        print(f"\n🌱 {self.name} 已初始化（ontology-platform v1.0）")
+        print(f"\n🌱 {self.name} 已初始化（clawra v1.0）")
         print(f"   记忆层: {len(self.memory._entities)} 个实体")
         print(f"   推理规则: {len(self.reasoner.rules)} 条")
     
@@ -487,7 +487,7 @@ def print_header(title: str):
 
 def main():
     """运行完整Demo"""
-    print_header("🌱 ontology-platform Agent Growth Demo")
+    print_header("🌱 clawra Agent Growth Demo")
     print("展示Agent三大成长能力：学习、推理、元认知")
     
     # 创建Agent
@@ -606,7 +606,7 @@ def main():
     
     print_header("✅ Demo完成")
     print("""
-    总结: ontology-platform 赋能Agent三大成长能力:
+    总结: clawra 赋能Agent三大成长能力:
     
     1️⃣ 学习特性: Agent运行时学习新规则，并持久化到本体
     2️⃣ 推理能力: 因果推理 + 逻辑推理，可追溯推理链

@@ -1,6 +1,6 @@
 # GitHub README Optimization Suggestions
 
-> **File**: `ontology-platform/README.md`
+> **File**: `clawra/README.md`
 > **Current Status**: Functional but needs polish for better conversion
 
 ---
@@ -55,11 +55,11 @@
 ### 1. Add Project Banner
 
 ```markdown
-![ontology-platform Banner](docs/banner.png)
+![clawra Banner](docs/banner.png)
 ```
 
 **Recommended banner content:**
-- Project name: ontology-platform
+- Project name: clawra
 - Tagline: "Trusted AI Inference Engine"
 - Visual: Abstract graph/network visualization or logo
 - Optional: "Built on Palantir's Ontology Principles"
@@ -71,11 +71,11 @@
 ### 2. Add Badges Row
 
 ```markdown
-[![PyPI Version](https://img.shields.io/pypi/v/ontology-platform)](https://pypi.org/project/ontology-platform/)
-[![Python Versions](https://img.shields.io/pypi/pythonversions/ontology-platform)](https://pypi.org/project/ontology-platform/)
-[![License](https://img.shields.io/github/license/wu-xiaochen/ontology-platform)](LICENSE)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/wu-xiaochen/ontology-platform/ci.yml)](https://github.com/wu-xiaochen/ontology-platform/actions)
-[![Downloads](https://img.shields.io/pypi/dm/ontology-platform)](https://pypi.org/project/ontology-platform/)
+[![PyPI Version](https://img.shields.io/pypi/v/clawra)](https://pypi.org/project/clawra/)
+[![Python Versions](https://img.shields.io/pypi/pythonversions/clawra)](https://pypi.org/project/clawra/)
+[![License](https://img.shields.io/github/license/wu-xiaochen/clawra)](LICENSE)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/wu-xiaochen/clawra/ci.yml)](https://github.com/wu-xiaochen/clawra/actions)
+[![Downloads](https://img.shields.io/pypi/dm/clawra)](https://pypi.org/project/clawra/)
 ```
 
 ### 3. Add Quick Start Section
@@ -84,7 +84,7 @@
 ## ⚡ Quick Start
 
 ```bash
-pip install ontology-platform
+pip install clawra
 ```
 
 ```python
@@ -116,7 +116,7 @@ print(f"Reasoning: {result.trace}")         # → Full chain
 ```markdown
 ## Comparison
 
-| Feature | Traditional RAG | Mem0 | Fine-tuning | ontology-platform |
+| Feature | Traditional RAG | Mem0 | Fine-tuning | clawra |
 |---------|----------------|------|-------------|-----------------|
 | Knowledge storage | Vector embeddings | Key-value | Model weights | OWL/RDF + Vectors |
 | Reasoning | None | None | Implicit | Causal + Logical |
@@ -157,7 +157,7 @@ python demo_procurement.py
 └─────────────────────┬───────────────────────────────────────┘
                       │
 ┌─────────────────────▼───────────────────────────────────────┐
-│               ontology-platform API (FastAPI)                │
+│               clawra API (FastAPI)                │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
 │  │  /learn      │  │  /reason     │  │  /query      │      │
 │  └──────────────┘  └──────────────┘  └──────────────┘      │
@@ -187,7 +187,7 @@ python demo_procurement.py
 ## ❓ FAQ
 
 **Q: How is this different from a knowledge graph?**
-A: Traditional knowledge graphs store relationships. ontology-platform adds a reasoning engine that can infer new knowledge from existing facts and rules, with confidence scores.
+A: Traditional knowledge graphs store relationships. clawra adds a reasoning engine that can infer new knowledge from existing facts and rules, with confidence scores.
 
 **Q: Does this require a specific LLM?**
 A: No. The reasoning engine is separate from the model. It works with any LLM via the API layer.
@@ -206,8 +206,8 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 ### Development Setup
 
 ```bash
-git clone https://github.com/wu-xiaochen/ontology-platform
-cd ontology-platform
+git clone https://github.com/wu-xiaochen/clawra
+cd clawra
 pip install -e ".[dev]"
 pytest
 ```
