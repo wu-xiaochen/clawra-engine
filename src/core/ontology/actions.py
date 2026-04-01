@@ -43,6 +43,14 @@ class ActionRegistry:
             parameters={"feedback_loop_id": "string"}
         ))
 
+        # 3. 自修复映射 Action (Self-healing)
+        self.register(ActionType(
+            id="action:update_mapping",
+            name="语义映射自修复",
+            description="当检测到物理字段与业务术语映射错误时，自动更新本体映射关系。",
+            parameters={"physical_key": "string", "business_term": "string", "confidence": "float"}
+        ))
+
     def register(self, action: ActionType):
         self.actions[action.id] = action
         logger.info(f"Registered Action Type: {action.name} ({action.id})")

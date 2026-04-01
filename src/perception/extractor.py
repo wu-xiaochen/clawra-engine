@@ -184,27 +184,32 @@ class KnowledgeExtractor:
         logger.warning(f"JSON修复失败，原始输出长度: {len(raw)}")
         return None
     
-    def _extract_chunk(self, text: str) -> List[FactSchema]:
+    def _extract_chunk(self, text: str, extra_prompt: Optional[str] = None) -> List[FactSchema]:
         """
         对单个文本块调用LLM进行三元组抽取。
         
-        使用普通 chat.completions.create() 而非 beta.parse()，
-        避免 SiliconFlow 4096 token output 限制导致的结构化输出截断。
+        Args:
+            text: 待抽取的文本块
+            extra_prompt: 额外的 Prompt 指示（如 Glossary 映射）
         """
         if not text.strip():
             return []
         
+        system_prompt = EXTRACTION_SYSTEM_PROMPT
+        if extra_prompt:
+            system_prompt = f"{system_prompt}\n\n[ADDITIONAL CONTEXT]\n{extra_prompt}"
+
         try:
             client, model_id = self._get_llm_client()
             
             completion = client.chat.completions.create(
                 model=model_id,
                 messages=[
-                    {"role": "system", "content": EXTRACTION_SYSTEM_PROMPT},
+                    {"role": "system", "content": system_prompt},
                     {"role": "user", "content": EXTRACTION_USER_PROMPT.format(text=text[:3000])}
                 ],
                 temperature=0.1,
-                max_tokens=2048  # 15条三元组不需要4096
+                max_tokens=2048
             )
             
             raw_output = completion.choices[0].message.content
@@ -253,18 +258,13 @@ class KnowledgeExtractor:
             ))
         return KnowledgeExtractionResult(facts=mock_facts)
 
-    def extract_from_text(self, text: str) -> List[Fact]:
+    def extract_from_text(self, text: str, extra_prompt: Optional[str] = None) -> List[Fact]:
         """
         从文本中提取知识三元组。
         
-        工业级管道流程：
-        1. 若文本长度 > CHUNK_THRESHOLD，自动分块
-        2. 每块独立调LLM抽取（避免一次性输出过长被截断）
-        3. 合并所有块的结果并去重
-        4. 转换为系统核心 Fact 对象
-        
         Args:
             text: 非结构化的输入文本
+            extra_prompt: 额外的 Prompt 引导（如业务词典映射）
             
         Returns:
             List[Fact]: 去重后的标准本体事实对象列表
@@ -299,7 +299,7 @@ class KnowledgeExtractor:
                 all_fact_schemas = []
                 for i, chunk_text in enumerate(chunk_texts):
                     logger.info(f"正在抽取第 {i+1}/{len(chunk_texts)} 块 (长度: {len(chunk_text)})")
-                    chunk_facts = self._extract_chunk(chunk_text)
+                    chunk_facts = self._extract_chunk(chunk_text, extra_prompt=extra_prompt)
                     all_fact_schemas.extend(chunk_facts)
                     logger.info(f"  → 本块抽取出 {len(chunk_facts)} 条三元组")
             

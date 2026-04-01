@@ -1,0 +1,67 @@
+import os
+import json
+import logging
+from typing import Dict, List, Any
+from openai import OpenAI
+
+logger = logging.getLogger(__name__)
+
+class GlossaryEngine:
+    """
+    业务语义词典引擎 (Glossary Engine)
+    
+    自动扫描数据库物理字典（Comment/DDL），利用 LLM 自动生成 Business Glossary。
+    解决物理字段名（如 P1_MIN）与本体业务术语（如 进口压力最小值）之间的断裂。
+    """
+    
+    def __init__(self):
+        self.api_key = os.getenv("OPENAI_API_KEY")
+        self.base_url = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+        self.model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+        
+        if self.api_key and self.api_key != "mock":
+            self.client = OpenAI(api_key=self.api_key, base_url=self.base_url)
+        else:
+            self.client = None
+
+    def discover_glossary(self, ddl_text: str) -> Dict[str, str]:
+        """
+        根据 DDL 或元数据文本发现映射关系
+        """
+        if not self.client:
+            logger.warning("GlossaryEngine: No API key found, returning empty mock.")
+            return {"P1_MAX": "出口压力最大值", "P2_MIN": "进口压力最小值"}
+
+        prompt = (
+            "你是一个资深数据建模专家。请分析以下数据库 DDL 或注释字段，"
+            "提取物理字段名与其对应的中文业务语义，并以 JSON 格式返回 (Key: 物理名, Value: 业务名)。\n\n"
+            f"DDL 内容:\n{ddl_text}\n\n"
+            "注意：只返回 JSON，不要任何解释。"
+        )
+        
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}],
+                response_format={"type": "json_object"}
+            )
+            mapping = json.loads(response.choices[0].message.content)
+            return mapping
+        except Exception as e:
+            logger.error(f"Glossary discovery failed: {e}")
+            return {}
+
+    def enrich_extractor_context(self, current_context: str, ddl_source: str) -> str:
+        """
+        将新发现的业务词典注入到 KnowledgeExtractor 的 Prompt 上下文中
+        """
+        mapping = self.discover_glossary(ddl_source)
+        glossary_str = "\n".join([f"- {k} -> {v}" for k, v in mapping.items()])
+        
+        enriched = (
+            f"{current_context}\n\n"
+            "### [Physical-to-Business Glossary Override]\n"
+            "在处理以下特殊物理字段时，请务必映射到对应业务术语：\n"
+            f"{glossary_str}"
+        )
+        return enriched

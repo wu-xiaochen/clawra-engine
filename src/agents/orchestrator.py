@@ -10,6 +10,8 @@ from memory.base import SemanticMemory, EpisodicMemory
 from perception.extractor import KnowledgeExtractor
 from evolution.self_correction import ContradictionChecker
 from agents.metacognition import MetacognitiveAgent
+from agents.auditor import AuditorAgent
+from perception.glossary_engine import GlossaryEngine
 from core.ontology.actions import ActionRegistry, ActionType
 
 class CognitiveOrchestrator:
@@ -30,7 +32,10 @@ class CognitiveOrchestrator:
         self.extractor = KnowledgeExtractor(use_mock_llm=False)
         self.sentinel = ContradictionChecker(self.reasoner, self.semantic_memory)
         self.reasoning_agent = MetacognitiveAgent(name="Clawra_Thinker", reasoner=self.reasoner)
+        self.auditor = AuditorAgent(name="Safety_Auditor", reasoner=self.reasoner)
+        self.glossary_engine = GlossaryEngine()
         self.action_registry = ActionRegistry()
+        self._wire_action_logics()
 
         # 全局项目上下文加载（类似 claude.md）
         self.project_context = self._load_project_context()
@@ -89,6 +94,38 @@ class CognitiveOrchestrator:
                 }
             }
         ]
+
+    def _wire_action_logics(self):
+        """将 Registry 中的 Action 与具体的引擎执行逻辑绑定"""
+        
+        # 绑定：语义映射自修复
+        update_action = self.action_registry.get_action("action:update_mapping")
+        if update_action:
+            update_action.execution_logic = self._execute_update_mapping
+
+    async def _execute_update_mapping(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """执行逻辑：更新本体映射关系"""
+        phys = params.get("physical_key")
+        biz = params.get("business_term")
+        conf = params.get("confidence", 1.0)
+        
+        if not phys or not biz:
+            return {"status": "ERROR", "msg": "Missing physical_key or business_term"}
+            
+        # 1. 更新 Reasoner (Logic Layer)
+        from core.reasoner import Fact
+        new_fact = Fact(subject=phys, predicate="maps_to", object=biz, confidence=conf, source="action_loop")
+        self.reasoner.add_fact(new_fact)
+        
+        # 2. 更新 SemanticMemory (Storage Layer)
+        self.semantic_memory.store_fact(new_fact)
+        
+        logger.info(f"Self-healing: 成功建立映射 {phys} -> {biz}")
+        return {
+            "status": "SUCCESS",
+            "impact": f"已将物理字段 {phys} 永久映射至业务术语 {biz}",
+            "triple": f"({phys} -> maps_to -> {biz})"
+        }
 
     async def execute_task(self, messages: List[Dict[str, str]]) -> Dict[str, Any]:
         """执行基于 Tool-Calling 的无极状态机大循环"""
@@ -163,6 +200,29 @@ class CognitiveOrchestrator:
                 
                 logger.info(f"🔨 Agent triggered tool: [{func_name}] with {func_args}")
 
+                # [Gemini Optimization] 多智能体语义审计 (Auditor Agent)
+                audit_result = await self.auditor.audit_plan(func_name, func_args)
+                if audit_result["status"] == "BLOCKED":
+                    logger.warning(f"🚫 Auditor BLOCKED tool [{func_name}]: {audit_result['risks']}")
+                    tool_result_str = json.dumps({
+                        "status": "AUDIT_FAILURE", 
+                        "msg": "执行计划被审计智能体拦截。", 
+                        "risks": audit_result["risks"]
+                    }, ensure_ascii=False)
+                    trace_node["result"] = {
+                        "summary": "🚨 审计拦截：检测到潜在逻辑风险",
+                        "risks": audit_result["risks"],
+                        "decision": audit_result["decision"]
+                    }
+                    response_data["trace"].append(trace_node)
+                    local_messages.append({
+                        "role": "tool",
+                        "tool_call_id": tool_call.id,
+                        "name": func_name,
+                        "content": tool_result_str
+                    })
+                    continue
+
                 try:
                     if func_name == "ingest_knowledge":
                         response_data["intent"] = "INGEST"
@@ -183,7 +243,14 @@ class CognitiveOrchestrator:
                             )
                             text = last_user_msg
                         
-                        extracted_facts = self.extractor.extract_from_text(text)
+                        # [Gemini Optimization] 自动业务词典对齐 (Glossary Engine)
+                        # 如果文本包含 DDL 或 字段定义，先提取词典
+                        extra_prompt = ""
+                        if any(k in text.upper() for k in ["CREATE TABLE", "FIELD", "字段", "SELECT"]):
+                            extra_prompt = self.glossary_engine.enrich_extractor_context("", text)
+                            logger.info("GlossaryEngine: 注入动态业务词典上下文")
+
+                        extracted_facts = self.extractor.extract_from_text(text, extra_prompt=extra_prompt)
                         accepted_facts = []
                         rejected_facts = []
                         for fact in extracted_facts:
@@ -276,13 +343,30 @@ class CognitiveOrchestrator:
                         
                         action = self.action_registry.get_action(action_id)
                         if action:
-                            # 模拟动态执行
-                            summary = f"已对 {params.get('target_entity', '未知实体')} 完成 {action.name} 所需的推理闭环。"
-                            tool_result_str = json.dumps({"status": "SUCCESS", "action": action.name, "execution_summary": summary}, ensure_ascii=False)
+                            # [Gemini Optimization] 真实执行动力学逻辑
+                            if action.execution_logic:
+                                try:
+                                    if asyncio.iscoroutinefunction(action.execution_logic):
+                                        exec_result = await action.execution_logic(params)
+                                    else:
+                                        exec_result = action.execution_logic(params)
+                                    
+                                    summary = exec_result.get("impact", f"已成功执行 {action.name}")
+                                    tool_result_str = json.dumps(exec_result, ensure_ascii=False)
+                                except Exception as e:
+                                    logger.error(f"Action execution logic failed: {e}")
+                                    tool_result_str = json.dumps({"status": "ERROR", "msg": str(e)})
+                                    summary = f"执行 {action.name} 时发生逻辑错误: {e}"
+                            else:
+                                # 降级：模拟动态执行
+                                summary = f"已对 {params.get('target_entity', '未知实体')} 完成 {action.name} 所需的推理闭环。"
+                                tool_result_str = json.dumps({"status": "SUCCESS", "action": action.name, "execution_summary": summary}, ensure_ascii=False)
+                            
                             trace_node["result"] = {
                                 "summary": f"执行动力学 Action: {action.name}",
                                 "action_details": action.description,
-                                "parameters": params
+                                "parameters": params,
+                                "execution_impact": summary
                             }
                         else:
                             tool_result_str = json.dumps({"status": "ERROR", "msg": "Action ID not found"})
