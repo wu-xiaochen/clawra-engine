@@ -83,19 +83,36 @@ if "messages" not in st.session_state:
 # =========================================
 # Sidebar: 状态监控 & 交互式图谱
 # =========================================
+PERSONA_PATH = "clawra.persona.md"
+
+def load_persona():
+    if os.path.exists(PERSONA_PATH):
+        with open(PERSONA_PATH, "r", encoding="utf-8") as f:
+            return f.read()
+    return ""
+
+def save_persona(text):
+    with open(PERSONA_PATH, "w", encoding="utf-8") as f:
+        f.write(text)
+
 with st.sidebar:
     st.image("https://img.icons8.com/isometric/100/brain.png", width=80)
     st.title("Clawra Neural Hub")
-    st.caption("v3.3 Kinetic Edition")
+    st.caption("v3.5 Kinetic Edition")
     st.markdown("---")
 
-    # [Gemini Optimization] 提示词自定义
-    with st.expander("🛠️ 认知人格设定 (Prompt Override)"):
+    # [Gemini Optimization] 提示词自定义与持久化
+    with st.expander("🛠️ 认知人格设定 (Prompt Override)", expanded=True):
+        saved_persona = load_persona()
         custom_system_prompt = st.text_area(
             "System Prompt", 
-            placeholder="留空则使用默认配置...",
-            help="在这里可以强制设定 Agent 的思考逻辑和语气。"
+            value=saved_persona,
+            placeholder="在这里输入自定义人格指令...",
+            help="修改后将自动保存并应用于后续对话。"
         )
+        if custom_system_prompt != saved_persona:
+            save_persona(custom_system_prompt)
+            st.toast("✅ 人格设定已保存", icon="💾")
 
     # 引擎实时指标
     reasoner = st.session_state.orchestrator.reasoner
@@ -234,26 +251,31 @@ if prompt := st.chat_input("灌输知识或发起逻辑查询..."):
     with st.chat_message("assistant"):
         status = st.status("🚀 Clawra 正在激发神经突触...", expanded=True)
         try:
-            # 强化型线程隔离异步运行器 (彻底解决 uvloop 冲突)
+            # 强化型线程隔离异步运行器 (彻底解决 uvloop 及 SessionState 线程访问冲突)
             import threading
             from concurrent.futures import ThreadPoolExecutor
 
-            def _run_in_new_loop(msgs, prompt):
+            def _run_in_new_loop(orch_instance, msgs, prompt):
                 new_loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(new_loop)
                 try:
                     return new_loop.run_until_complete(
-                        st.session_state.orchestrator.execute_task(msgs, custom_prompt=prompt)
+                        orch_instance.execute_task(msgs, custom_prompt=prompt)
                     )
                 finally:
                     new_loop.close()
 
             start_time = time.time()
+            # 预聚合必要数据，避免在子线程中访问 st.session_state
+            current_orch = st.session_state.orchestrator
+            current_msgs = st.session_state.messages
+            
             with ThreadPoolExecutor(max_workers=1) as executor:
                 future = executor.submit(
                     _run_in_new_loop, 
-                    st.session_state.messages, 
-                    st.session_state.get("custom_system_prompt")
+                    current_orch,
+                    current_msgs, 
+                    custom_system_prompt
                 )
                 response = future.result()
             
