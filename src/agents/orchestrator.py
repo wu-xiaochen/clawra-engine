@@ -16,7 +16,9 @@ from agents.auditor import AuditorAgent
 from core.memory.skills import SkillRegistry
 from perception.glossary_engine import GlossaryEngine
 from core.ontology.actions import ActionRegistry, ActionType
+from core.ontology.rule_engine import RuleEngine
 from core.ontology.grain_validator import GrainValidator
+from memory.governance import MemoryGovernor
 
 class CognitiveOrchestrator:
     """
@@ -35,6 +37,8 @@ class CognitiveOrchestrator:
         self.glossary_engine = GlossaryEngine()
         self.skill_registry = SkillRegistry(semantic_memory=self.semantic_memory)
         self.action_registry = ActionRegistry()
+        self.rule_engine = RuleEngine()
+        self.memory_governor = MemoryGovernor(self.semantic_memory, self.reasoner)
         self._wire_action_logics()
 
         self.project_context = project_context or self._load_project_context()
@@ -259,14 +263,46 @@ class CognitiveOrchestrator:
 
                     elif func_name == "execute_action":
                         response_data["intent"] = "ACTION"
-                        action_id = func_args.get("action_id", "")
-                        exec_result = await self.action_registry.get_action(action_id).execution_logic(func_args.get("params", {}))
-                        trace_node["result"] = {
-                            "status": "SUCCESS",
-                            "summary": f"执行 Action: {action_id}",
-                            "impact": exec_result.get("impact", "")
-                        }
-                        tool_result_str = json.dumps(exec_result)
+                        action_id = func_args.get("action_id")
+                        action_params = func_args.get("params", {})
+                        
+                        action_def = self.action_registry.get_action(action_id)
+                        if not action_def:
+                            trace_node["result"] = {"status": "ERROR", "msg": f"Action {action_id} not found."}
+                        else:
+                            # --- RuleEngine Gating Sandbox ---
+                            if hasattr(action_def, 'target_object_class') and action_def.target_object_class and hasattr(action_def, 'bound_rules') and action_def.bound_rules:
+                                rule_results = self.rule_engine.evaluate_action_preconditions(action_id, action_def.target_object_class, action_params)
+                                failed_rules = [r for r in rule_results if r.get("status") != "PASS"]
+                                
+                                if failed_rules:
+                                    summary_risks = [f"【违规】{r['rule_name']} -> Sandbox公式:{r['expression']}, 当前参数:{r['context_used']}" for r in failed_rules]
+                                    trace_node["result"] = {
+                                        "status": "BLOCKED",
+                                        "summary": "物理动作被底层数学沙盒(RuleEngine)强行拦截",
+                                        "risks": summary_risks
+                                    }
+                                    response_data["trace"].append(trace_node)
+                                    local_messages.append({
+                                        "role": "tool",
+                                        "tool_call_id": tool_call.id,
+                                        "name": func_name,
+                                        "content": json.dumps({"status": "BLOCKED", "reason": "数学沙盒校验未通过，您计算或推荐的数值存在逻辑冲突", "details": summary_risks}, ensure_ascii=False)
+                                    })
+                                    continue
+                            
+                            # Passed Sandbox or No Rules, execute:
+                            if action_def.execution_logic:
+                                exec_result = await action_def.execution_logic(action_params)
+                            else:
+                                exec_result = {"status": "SUCCESS", "impact": "动作已被框架虚拟消费并记录"}
+                            
+                            trace_node["result"] = {
+                                "status": "SUCCESS",
+                                "summary": f"执行 Action: {action_id}",
+                                "impact": exec_result.get("impact", "")
+                            }
+                            tool_result_str = json.dumps(exec_result)
 
                     trace_node["latency"] = f"{(time.time() - tool_start_time):.2f}s"
                     response_data["trace"].append(trace_node)
@@ -279,4 +315,14 @@ class CognitiveOrchestrator:
                     response_data["trace"].append(trace_node)
                     local_messages.append({"role": "tool", "tool_call_id": tool_call.id, "name": func_name, "content": json.dumps({"status": "ERROR", "msg": str(e)})})
 
+        # == 动态修剪治理 ==
+        gc_stats = self.memory_governor.run_garbage_collection()
+        if gc_stats["metrics"]["pruned_facts"] > 0:
+            response_data["trace"].append({
+                "tool": "🧹 神经修剪 (Synaptic Pruning)",
+                "args": {},
+                "latency": "-",
+                "result": {"summary": f"自动执行突触剪枝，清理了 {gc_stats['metrics']['pruned_facts']} 个低置信度/过时节点"}
+            })
+            
         return response_data

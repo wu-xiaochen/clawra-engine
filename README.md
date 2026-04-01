@@ -26,16 +26,33 @@ graph TD
     Action --> User
 ```
 
----
+# 🧠 Clawra 神经符号人工智能平台 (Neuro-Symbolic Cognitive Engine)
 
-## 🌟 Key Innovations
+## 📌 项目定位
 
--   **🕸️ Interactive Kinetic Graph**: Powered by **Pyvis**, Clawra provides a real-time, draggable, and zoomable view of the local ontology. Explore deeply nested relationships and "maximize" the view for complex KG analysis.
--   **🛡️ Multi-Agent Safety Audit**: Features a dedicated **Auditor Agent** and **Sentinel** logic to intercept risky plans and prevent ontological contradictions before execution.
--   **📏 Grain Theory (粒度理论)**: Built-in statistical integrity checks for aggregation queries (GraphRAG). Automatically detects "Fan-traps" and logical cardinality risks to ensure data-driven decisions are mathematically sound.
--   **🧐 High-Fidelity Reasoning Trace**: Every decision is logged with 100% transparency. View metacognitive reflections, auditor decisions, and forward-chaining steps in a structured, professional dashboard.
--   **🛠️ Framework-First Design**: The `CognitiveOrchestrator` is fully decoupled from the UI. It can be integrated as a standalone engine for any Agentic workflow requiring formal reasoning and safety guardrails.
--   **🎭 Cognitive Control**: Real-time **Prompt Override** capabilities allow users to calibrate agent personas and logic depth dynamically.
+**Clawra Cognitive Engine** 现已正式跨越“知识检索”的古典 RAG 时代，进化成为基于 **神经符号计算 (Neuro-Symbolic V-RAG)** 与 **粒度理论 (Grain Theory)** 的企业级推理中枢平台。
+
+它是为真正的商业智能体 (Business Agents) 打造的“大脑底座”：
+1. 它不再迷信大模型的计算能力，而是将大模型作为**语言解析中枢**。
+2. 核心数学和业务边界由本地的 **RuleEngine 沙盒** 与 **Ontology 本体图数据库** 执掌。
+3. 具备自主学习与遗忘代谢机制：过时的隐性知识会被 `MemoryGovernor` 自动剪枝降权。
+
+## ✨ 企业级核心架构特征 (v3.5 Kinetic Edition)
+
+### 1. 深度治理的图向量混合记忆 (Hybrid Governed Memory)
+- **Semantic Layer**: 基于 `ChromaDB` (长文本向量引擎) + `Neo4j` (动态关系图谱) 实现双重语义召回。
+- **Governance Layer**: 引入时间片遗忘与置信度衰减算法 (`governance.py`)。大模型如果引用了某种错误或冲突经验，导致规则回滚，该知识的三元组权重会直接扣减，当 Confidence < 0.20 时自动发生**神经元突触剪枝 (Synaptic Pruning)**。
+
+### 2. 绝对免疫“人工智能数学幻觉” (Rule-Gated Math Sandbox)
+完全剥夺大模型的算术能力！我们在 `src/core/ontology/rule_engine.py` 中实现了纯净的 AST 解析沙盒环境。当遇到如“所需资金不得超过预算115%”或“安全供气余量必须>70%”时，大模型只负责将所需变量抽出丢入引擎，最终真假由沙盒判定输出（完全规避 GPT 做错大小对比/幻觉的灾难）。
+
+### 3. 三位一体的动力学闭环 (Tri-Layer Action Linkage)
+系统脱离了被动检索，升级为**“能动执行”**。
+- `Action Registry` 将纯后端的 API 物理动作与 Graph 实体强绑定。
+- 在 Action 被执行前，触发 **Pre-Condition Rule Gating (规则门控)**。本体引擎会自动拉取挂载在该实体上的所有 Rule 进行数学审计。违规者立即生成高能警戒级 **审计拦截 (BLOCKED)** 历史记录，斩断失控风险。
+
+### 4. 高保真白盒化推理追踪 (High-Fidelity Transparent Tracing)
+所有黑盒运作（如 LLM 本身的思考过程 Chain-Of-Thought、沙盒执行参数、粒度审计、图谱展开路径）全量记录。不仅向开发者输出详细的 JSON Schema Trace Payload，并通过 Demo 进行可视化呈现，企业客户可以完美审查每一步机器行动的逻辑和依据。
 
 ---
 

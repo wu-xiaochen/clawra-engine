@@ -16,6 +16,8 @@ class ActionType:
     name: str
     description: str
     parameters: Dict[str, Any] = field(default_factory=dict)
+    target_object_class: Optional[str] = None
+    bound_rules: List[str] = field(default_factory=list)
     validation_logic: Optional[Callable] = None
     execution_logic: Optional[Callable] = None
 
@@ -32,7 +34,9 @@ class ActionRegistry:
             id="action:validate_compliance",
             name="合规性智能校验",
             description="针对特定调压箱型号，对照国家安全标准（GB）进行自动闭环校验。",
-            parameters={"target_entity": "string", "standard_id": "string"}
+            parameters={"target_entity": "string", "standard_id": "string", "supply_capacity": "float", "flow_requirement": "float"},
+            target_object_class="GasRegulator",
+            bound_rules=["rule:gas_regulator_safety_margin"]
         ))
         
         # 2. 知识演进 Action
