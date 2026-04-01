@@ -56,8 +56,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 @st.cache_resource
-def init_orchestrator_v2():
-    """初始化 Clawra 认知中枢"""
+def init_orchestrator_v3():
+    """初始化 Clawra 认知中枢 v3"""
     reasoner = Reasoner()
     # 默认预装一些核心公理
     reasoner.facts.append(Fact("System", "status", "online", confidence=1.0))
@@ -72,9 +72,10 @@ def init_orchestrator_v2():
     episodic_mem = EpisodicMemory()
     return CognitiveOrchestrator(reasoner, semantic_mem, episodic_mem)
 
-# 强制重置 SessionState 缓存
-if "orchestrator" not in st.session_state or not hasattr(st.session_state.orchestrator, 'action_registry'):
-    st.session_state.orchestrator = init_orchestrator_v2()
+# 强制重置 SessionState 缓存 (v3)
+if "orchestrator" not in st.session_state or getattr(st.session_state.orchestrator, '__class__').__name__ == "CognitiveOrchestrator":
+    # 强制重新实例化以加载最新的 _get_tools schema (绕过旧实例方法绑定的问题)
+    st.session_state.orchestrator = init_orchestrator_v3()
 
 if "messages" not in st.session_state:
     st.session_state.messages = [
@@ -211,18 +212,23 @@ def render_trace_node(node):
                 col1, col2 = st.columns([3, 1])
                 with col1:
                     if "reasoning_chain" in result and result["reasoning_chain"]:
-                        st.write("**🧠 逻辑推导链:**")
+                        st.write("**🧠 符号推导规则链:**")
                         for s in result["reasoning_chain"]:
                             st.caption(f"- {s.get('conclusion', '')}")
                     
                     if "metacognition" in result:
                         meta = result["metacognition"]
-                        st.info(f"💡 {meta.get('result', 'Thinking...')}")
+                        # 当未发生符号级逻辑链条时，隐藏冰冷的机械提示
+                        if meta.get('total_confidence', 0) > 0:
+                            st.info(f"💡 {meta.get('result', 'Thinking...')}")
+                        else:
+                            st.caption("ℹ️ 当前检索为纯语义向量映射 (无衍生隐性知识规则匹配)")
                 
                 with col2:
                     if "vector_context" in result:
-                        st.write("**🔍 向量召回:**")
+                        st.write("**🔍 向量溯源召回:**")
                         st.caption(f"Hits: {len(result['vector_context'])}")
+
             
             elif tool == "execute_action":
                 if "impact" in result:
