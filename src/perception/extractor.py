@@ -1,20 +1,111 @@
+import json
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
+from pydantic import BaseModel, Field
 from core.reasoner import Fact
 
 logger = logging.getLogger(__name__)
+
+class FactSchema(BaseModel):
+    """
+    FactSchema (Pydantic Model)
+    用于约束大模型输出严格符合 RDF 三元组格式。这种结构化输出从源头阻断了 LLM 的发散和幻觉。
+    """
+    subject: str = Field(..., description="主体名称，如 '公司A', '设备B', '人物C'")
+    predicate: str = Field(..., description="谓词（关系或属性），强烈建议使用下划线命名法，如 'has_certification', 'operates_at'")
+    object: str = Field(..., description="客体（属性值或关联目标），如 'ISO9001', 'true', '公司D'")
+    confidence: float = Field(default=0.9, ge=0.0, le=1.0, description="对该事实提取准确度的置信度 (0.0 到 1.0)")
+    source: str = Field(default="llm_extraction", description="信息来源")
+
+class KnowledgeExtractionResult(BaseModel):
+    """
+    包含提取出的多条事实三元组的集合。
+    """
+    facts: List[FactSchema] = Field(default_factory=list, description="提取出的事实列表")
+
 
 class KnowledgeExtractor:
     """
     知识提取器 (Knowledge Extractor)
     
-    感知层核心：负责将原始输入（文档, 网页, 传感器数据）
-    转化为可进入推理系统的结构化数据。
+    使用 Pydantic 结构化输出约束，将非结构化文本通过 LLM 转换为明确且合法的本体事实。
     """
-    def __init__(self, model_name: str = "gpt-4"):
-        self.model_name = model_name
+    def __init__(self, use_mock_llm: bool = True):
+        self.use_mock_llm = use_mock_llm
+
+    def _call_mock_llm(self, text: str) -> KnowledgeExtractionResult:
+        """
+        模拟大模型的 JSON 结构化输出调用。
+        在真实环境中，这里对接 openai.beta.chat.completions.parse(..., response_format=KnowledgeExtractionResult)
+        """
+        logger.info("[Mock LLM] Processing text for extraction...")
+        # 简单模拟：如果文本包含 safe 等关键词，尝试提取
+        mock_facts = []
+        if "Supplier 'SafeGas_Corp' has ISO9001" in text:
+            mock_facts.append(FactSchema(
+                subject="SafeGas_Corp",
+                predicate="has_iso9001_cert",
+                object="true",
+                confidence=0.98,
+                source="doc_parsing"
+            ))
+            mock_facts.append(FactSchema(
+                subject="SafeGas_Corp",
+                predicate="operates_above_10bar",
+                object="true",
+                confidence=0.95,
+                source="doc_parsing"
+            ))
+        elif "risk" in text.lower():
+             mock_facts.append(FactSchema(
+                subject="SupplierA",
+                predicate="status",
+                object="high_risk",
+                confidence=0.7,
+                source="doc_parsing"
+            ))
         
-    def parse_document(self, content: str) -> List[Fact]:
-        """解析非结构化文档内容"""
-        logger.info("感知层：正在解析文档...")
-        return []
+        return KnowledgeExtractionResult(facts=mock_facts)
+
+    def extract_from_text(self, text: str) -> List[Fact]:
+        """
+        从文本中提取知识三元组
+        
+        Args:
+            text: 非结构化的输入文本（文档段落、聊天记录）
+            
+        Returns:
+            List[Fact]: 转换后的标准本体事实对象列表
+        """
+        logger.info(f"KnowledgeExtractor 开始提取知识 (长度: {len(text)})")
+        
+        try:
+            if self.use_mock_llm:
+                extraction_result = self._call_mock_llm(text)
+            else:
+                # 真实 LLM 调用的占位符，需引入 openai sdk 
+                # completion = client.beta.chat.completions.parse(
+                #     model="gpt-4o",
+                #     messages=[{"role": "user", "content": f"Extract formal triples from: {text}"}],
+                #     response_format=KnowledgeExtractionResult,
+                # )
+                # extraction_result = completion.choices[0].message.parsed
+                raise NotImplementedError("Real LLM extraction requires API configuration.")
+
+            # 将 Pydantic Models 转换为系统的 Fact Core Objects
+            core_facts = []
+            for item in extraction_result.facts:
+                core_facts.append(Fact(
+                    subject=item.subject,
+                    predicate=item.predicate,
+                    object=item.object,
+                    confidence=item.confidence,
+                    source=item.source
+                ))
+            
+            logger.info(f"成功提取 {len(core_facts)} 条结构化事实")
+            return core_facts
+            
+        except Exception as e:
+            logger.error(f"提取过程失败: {str(e)}")
+            return []

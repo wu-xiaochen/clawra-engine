@@ -41,17 +41,54 @@ class SemanticMemory:
         result = self.client.find_neighbors(concept, depth=depth)
         return result.nodes
 
+import json
+import sqlite3
+from pathlib import Path
+
 class EpisodicMemory:
     """
     情理性内存 (Episodic Memory)
     
     记录 Agent 的具体经历、决策轨迹和推理过程。
+    通过 SQLite 实现全生命周期的本地持久化，支持未来的 RLHF 数据积累。
     """
-    def __init__(self, storage_backend: str = "local"):
-        self.storage_backend = storage_backend
-        self.episodes = []
+    def __init__(self, db_path: str = "data/episodic_memory.db"):
+        self.db_path = Path(db_path)
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self._init_db()
         
+    def _init_db(self):
+        """初始化 SQLite 数据库"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS episodes (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    task_id TEXT,
+                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    episode_data JSON
+                )
+            ''')
+            conn.commit()
+
     def store_episode(self, episode: dict):
-        """记录一个任务片段"""
-        self.episodes.append(episode)
-        logger.info(f"Recorded episode: {episode.get('task_id', 'unknown')}")
+        """记录一个任务片段并持久化"""
+        task_id = episode.get('task_id', 'unknown_task')
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO episodes (task_id, episode_data) VALUES (?, ?)",
+                (task_id, json.dumps(episode, ensure_ascii=False))
+            )
+            conn.commit()
+            
+        logger.info(f"💾 Permanently recorded episode into SQLite: {task_id}")
+
+    def retrieve_episodes(self, limit: int = 10) -> List[dict]:
+        """检索最近的经历"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT episode_data FROM episodes ORDER BY timestamp DESC LIMIT ?", (limit,))
+            rows = cursor.fetchall()
+            return [json.loads(row[0]) for row in rows]
+
