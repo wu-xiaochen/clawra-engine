@@ -56,7 +56,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 @st.cache_resource
-def init_orchestrator():
+def init_orchestrator_v2():
     """初始化 Clawra 认知中枢"""
     reasoner = Reasoner()
     # 默认预装一些核心公理
@@ -72,8 +72,9 @@ def init_orchestrator():
     episodic_mem = EpisodicMemory()
     return CognitiveOrchestrator(reasoner, semantic_mem, episodic_mem)
 
-if "orchestrator" not in st.session_state:
-    st.session_state.orchestrator = init_orchestrator()
+# 强制重置 SessionState 缓存
+if "orchestrator" not in st.session_state or not hasattr(st.session_state.orchestrator, 'action_registry'):
+    st.session_state.orchestrator = init_orchestrator_v2()
 
 if "messages" not in st.session_state:
     st.session_state.messages = [
