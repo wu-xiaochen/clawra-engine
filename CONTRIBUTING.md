@@ -1,43 +1,73 @@
-# 贡献指南
+# Contributing to Clawra (ontology-platform)
 
-感谢您对 clawra 的兴趣！我们欢迎各种形式的贡献。
+Welcome to Clawra! We're building the future of neuro-symbolic AI agents with memory, reasoning, and metacognition capabilities.
 
-## 如何贡献
+## 🚀 Quick Start
 
-### 1. 报告问题
-- 在 GitHub Issues 中创建新 issue
-- 清晰描述问题或功能需求
-- 提供复现步骤（如果是 bug）
+1. **Fork** the repository
+2. **Clone** your fork: `git clone https://github.com/YOUR_USERNAME/ontology-platform.git`
+3. **Create a branch**: `git checkout -b feature/your-feature-name`
 
-### 2. 提交代码
-1. Fork 本仓库
-2. 创建功能分支 (`git checkout -b feature/amazing-feature`)
-3. 提交更改 (`git commit -m 'Add amazing feature'`)
-4. Push 到分支 (`git push origin feature/amazing-feature`)
-5. 创建 Pull Request
+## 📋 Development Setup
 
-### 3. 代码规范
-- 遵循 PEP 8 Python 代码规范
-- 为新功能添加测试
-- 更新相关文档
+```bash
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-### 4. 本体贡献
-- 新增领域本体需包含完整定义
-- 遵循 `domain_expert/` 目录结构
-- 提供中英文双语描述
+# Install dependencies
+pip install -e ".[dev]"
 
-## 项目结构
-
-```
-clawra/
-├── domain_expert/     # 领域本体库
-├── src/               # 核心源代码
-├── scripts/           # 脚本工具
-├── skills/            # AI Agent技能
-├── docs/              # 文档
-└── tests/             # 测试
+# Run tests
+pytest tests/
 ```
 
-## 许可
+## 🎯 Ways to Contribute
 
-通过贡献代码，您同意您的贡献将按照 MIT 许可证授权。
+### 🐛 Bug Reports
+Use GitHub Issues to report bugs. Please include:
+- Clear description of the issue
+- Steps to reproduce
+- Environment details (OS, Python version)
+
+### 💡 Feature Requests
+- Check existing issues first
+- Provide clear use cases
+- Explain the expected behavior
+
+### 📖 Documentation
+- Improve docstrings
+- Add examples to the wiki
+- Fix typos and grammar
+
+### 💻 Code Contributions
+- Follow PEP 8 style guide
+- Write tests for new features
+- Update documentation accordingly
+
+## 🔄 Pull Request Process
+
+1. Update documentation if needed
+2. Ensure all tests pass
+3. Update the CHANGELOG.md
+4. Request review from maintainers
+
+## 📝 Commit Messages
+
+Use conventional commits:
+- `feat:` new feature
+- `fix:` bug fix
+- `docs:` documentation changes
+- `test:` adding tests
+- `refactor:` code refactoring
+
+## 💬 Community
+
+Join our discussions! (Coming soon)
+
+## 📜 License
+
+By contributing, you agree that your contributions will be licensed under the MIT License.
+
+---
+Built with ❤️ for Autonomous Intelligence
