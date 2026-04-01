@@ -47,11 +47,11 @@ class CognitiveOrchestrator:
                 "type": "function",
                 "function": {
                     "name": "ingest_knowledge",
-                    "description": "严格用于抽取事实逻辑。调用感知层(Perception)将用户输入的业务文本剥离为三元组，送入进化哨兵(Sentinel)验证防冲突，最后永久钉入Neo4j图谱。当用户传授经验、定义新规时调用此武器。",
+                    "description": "将用户提供的原始文本直接送入知识抽取管道。你必须将用户的原文原封不动、一字不改地传入text参数，禁止摘要、禁止省略、禁止改写。系统内部会自动分块处理超长文本。",
                     "parameters": {
                         "type": "object",
                         "properties": {
-                            "text": {"type": "string", "description": "需要解构入库的陈述句片段。"}
+                            "text": {"type": "string", "description": "用户提供的原始文本，必须原封不动传入，禁止摘要或压缩。"}
                         },
                         "required": ["text"]
                     }
@@ -61,11 +61,11 @@ class CognitiveOrchestrator:
                 "type": "function",
                 "function": {
                     "name": "query_graph",
-                    "description": "严格用于逻辑推理与追查。连通 ChromaDB 和 Reasoner 双引擎进行高维跨步推导（传递性/对称性等事实发酵）。当用户提出严谨审查、溯源判定或逻辑深究时触发此核按钮。",
+                    "description": "连通 ChromaDB 和 Reasoner 双引擎进行推理查询。当用户提出溯源判定或逻辑推导时使用。",
                     "parameters": {
                         "type": "object",
                         "properties": {
-                            "query": {"type": "string", "description": "高度概括的目标追问词条"}
+                            "query": {"type": "string", "description": "查询目标关键词或问题"}
                         },
                         "required": ["query"]
                     }
@@ -141,17 +141,32 @@ class CognitiveOrchestrator:
                     if func_name == "ingest_knowledge":
                         response_data["intent"] = "INGEST"
                         text = func_args.get("text", "")
+                        
+                        # F1 安全网：检测LLM是否压缩了原文
+                        # 如果工具参数中的text远短于最后一条用户消息，则使用原文
+                        last_user_msg = ""
+                        for m in reversed(messages):
+                            if m.get("role") == "user":
+                                last_user_msg = str(m.get("content", ""))
+                                break
+                        
+                        if last_user_msg and len(text) < len(last_user_msg) * 0.7:
+                            logger.warning(
+                                f"F1安全网触发: LLM压缩了原文 (工具参数:{len(text)}字 < 原文:{len(last_user_msg)}字 × 0.7)，"
+                                f"使用原始用户输入替代"
+                            )
+                            text = last_user_msg
+                        
                         extracted_facts = self.extractor.extract_from_text(text)
                         accepted_facts = []
                         for fact in extracted_facts:
-                            # 动态图谱防爆验证
                             if self.sentinel.check_fact(fact):
                                 self.reasoner.add_fact(fact)
                                 self.semantic_memory.store_fact(fact)
                                 accepted_facts.append(fact.to_tuple())
                                 
                         response_data["facts"].extend(accepted_facts)
-                        tool_result_str = json.dumps({"status": "SUCCESS", "stored_triples": accepted_facts}, ensure_ascii=False)
+                        tool_result_str = json.dumps({"status": "SUCCESS", "stored_triples": len(accepted_facts), "sample": accepted_facts[:5]}, ensure_ascii=False)
                         trace_node["result"] = f"Ingested {len(accepted_facts)} verified axioms."
 
                     elif func_name == "query_graph":

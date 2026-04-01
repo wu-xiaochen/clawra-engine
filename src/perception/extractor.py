@@ -1,125 +1,307 @@
+import os
+import json
 import logging
-from typing import List
+import re
+from typing import List, Optional
+
 from pydantic import BaseModel, Field
 from core.reasoner import Fact
+from chunking.hierarchical import HierarchicalChunker
 
 logger = logging.getLogger(__name__)
 
+
+# ========================================
+# Pydantic Schema（约束LLM输出格式）
+# ========================================
+
 class FactSchema(BaseModel):
     """
-    FactSchema (Pydantic Model)
-    用于约束大模型输出严格符合 RDF 三元组格式。这种结构化输出从源头阻断了 LLM 的发散和幻觉。
+    单条事实三元组的结构化模型。
+    用于约束大模型输出严格符合 RDF 三元组格式。
     """
-    subject: str = Field(..., description="主体名称，如 '公司A', '设备B', '人物C'")
-    predicate: str = Field(..., description="谓词（关系或属性），强烈建议使用下划线命名法，如 'has_certification', 'operates_at'")
-    object: str = Field(..., description="客体（属性值或关联目标），如 'ISO9001', 'true', '公司D'")
-    confidence: float = Field(default=0.9, ge=0.0, le=1.0, description="对该事实提取准确度的置信度 (0.0 到 1.0)")
-    source: str = Field(default="llm_extraction", description="信息来源")
+    subject: str = Field(..., description="主体实体名称")
+    predicate: str = Field(..., description="谓词（关系）")
+    object: str = Field(..., description="客体（目标实体或属性值）")
+    confidence: float = Field(default=0.9, ge=0.0, le=1.0, description="置信度")
+    source: str = Field(default="llm_extraction", description="来源标识")
+
 
 class KnowledgeExtractionResult(BaseModel):
-    """
-    包含提取出的多条事实三元组的集合。
-    """
-    facts: List[FactSchema] = Field(default_factory=list, description="提取出的事实列表")
+    """提取的事实三元组集合"""
+    facts: List[FactSchema] = Field(default_factory=list, description="提取的事实列表")
 
+
+# ========================================
+# 抽取 Prompt（精确指导模型输出）
+# ========================================
+
+EXTRACTION_SYSTEM_PROMPT = """你是一个精确的本体知识抽取引擎。你的任务是从文本中提取结构化的知识三元组(Subject, Predicate, Object)。
+
+输出规则：
+1. 只输出一个合法的 JSON 对象，格式如下：
+{"facts": [{"subject": "...", "predicate": "...", "object": "...", "confidence": 0.9}]}
+2. subject 和 object 应该是明确的实体名词（如"燃气调压箱"、"ISO9001"）
+3. predicate 应使用清晰的关系描述（如"包含组件"、"适用场景"、"进口压力范围"）
+4. 不要解释，不要加markdown格式，只输出纯JSON
+5. 每次最多提取 15 条最重要的三元组
+6. confidence 表示你对该条事实的确信度（0.0-1.0）"""
+
+EXTRACTION_USER_PROMPT = """请从以下文本中提取知识三元组。只输出JSON，不要解释。
+
+文本段落：
+{text}"""
+
+
+# ========================================
+# 核心抽取器
+# ========================================
 
 class KnowledgeExtractor:
     """
     知识提取器 (Knowledge Extractor)
     
-    使用 Pydantic 结构化输出约束，将非结构化文本通过 LLM 转换为明确且合法的本体事实。
+    工业级管道：长文档 → 分块 → 逐块LLM抽取 → JSON修复 → 合并去重 → 输出Fact列表
+    
+    架构特性：
+    - 自动对长文档调用 HierarchicalChunker 分块
+    - 每块独立调用 LLM，限制输出 ≤15 条三元组
+    - 内置 JSON 修复逻辑（处理截断的输出）
+    - 支持 Mock 模式用于单元测试
     """
+    
+    # 单块最大字符数（超过此值将触发分块）
+    CHUNK_THRESHOLD = 1500
+    # 每个LLM调用最大返回三元组数
+    MAX_TRIPLES_PER_CALL = 15
+    
     def __init__(self, use_mock_llm: bool = True):
         self.use_mock_llm = use_mock_llm
-
+        self.chunker = HierarchicalChunker(max_tokens=2048, overlap_tokens=128)
+        
+        # LLM 客户端（延迟初始化）
+        self._client = None
+        self._model_id = None
+    
+    def _get_llm_client(self):
+        """获取或创建 LLM 客户端（单例模式，避免重复创建）"""
+        if self._client is None:
+            from openai import OpenAI
+            api_key = os.getenv("OPENAI_API_KEY")
+            base_url = os.getenv("OPENAI_BASE_URL", "https://api.siliconflow.cn/v1")
+            self._model_id = os.getenv("OPENAI_MODEL", "Pro/MiniMaxAI/MiniMax-M2.5")
+            self._client = OpenAI(api_key=api_key, base_url=base_url)
+        return self._client, self._model_id
+    
+    def _repair_json(self, raw: str) -> Optional[dict]:
+        """
+        修复可能被截断或包含多余字符的 JSON 输出。
+        
+        策略：
+        1. 先尝试直接解析
+        2. 去除 markdown code fence
+        3. 查找最外层 { } 边界
+        4. 补全被截断的 JSON 数组
+        """
+        if not raw or not raw.strip():
+            return None
+        
+        text = raw.strip()
+        
+        # 去除 markdown 代码块标记
+        text = re.sub(r'^```(?:json)?\s*', '', text)
+        text = re.sub(r'\s*```$', '', text)
+        text = text.strip()
+        
+        # 尝试直接解析
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            pass
+        
+        # 查找 JSON 对象边界
+        start = text.find('{')
+        if start == -1:
+            return None
+        
+        # 尝试找到匹配的结束括号
+        depth = 0
+        end = -1
+        for i in range(start, len(text)):
+            if text[i] == '{':
+                depth += 1
+            elif text[i] == '}':
+                depth -= 1
+                if depth == 0:
+                    end = i
+                    break
+        
+        if end != -1:
+            try:
+                return json.loads(text[start:end + 1])
+            except json.JSONDecodeError:
+                pass
+        
+        # 最后手段：截断JSON修复（在最后一个完整的 } 后补全数组和对象）
+        truncated = text[start:]
+        # 找到最后一个}的位置
+        last_complete = truncated.rfind('}')
+        if last_complete > 0:
+            candidate = truncated[:last_complete + 1]
+            # 补全可能缺失的 ] 和 }
+            open_brackets = candidate.count('[') - candidate.count(']')
+            open_braces = candidate.count('{') - candidate.count('}')
+            candidate += ']' * max(0, open_brackets)
+            candidate += '}' * max(0, open_braces)
+            try:
+                return json.loads(candidate)
+            except json.JSONDecodeError:
+                pass
+        
+        logger.warning(f"JSON修复失败，原始输出长度: {len(raw)}")
+        return None
+    
+    def _extract_chunk(self, text: str) -> List[FactSchema]:
+        """
+        对单个文本块调用LLM进行三元组抽取。
+        
+        使用普通 chat.completions.create() 而非 beta.parse()，
+        避免 SiliconFlow 4096 token output 限制导致的结构化输出截断。
+        """
+        if not text.strip():
+            return []
+        
+        try:
+            client, model_id = self._get_llm_client()
+            
+            completion = client.chat.completions.create(
+                model=model_id,
+                messages=[
+                    {"role": "system", "content": EXTRACTION_SYSTEM_PROMPT},
+                    {"role": "user", "content": EXTRACTION_USER_PROMPT.format(text=text[:3000])}
+                ],
+                temperature=0.1,
+                max_tokens=2048  # 15条三元组不需要4096
+            )
+            
+            raw_output = completion.choices[0].message.content
+            parsed = self._repair_json(raw_output)
+            
+            if not parsed or "facts" not in parsed:
+                logger.warning(f"LLM抽取返回无法解析的内容 (长度: {len(raw_output or '')})")
+                return []
+            
+            # 手动验证并转换为 Pydantic 模型
+            facts = []
+            for item in parsed["facts"][:self.MAX_TRIPLES_PER_CALL]:
+                try:
+                    fact = FactSchema(
+                        subject=str(item.get("subject", "")).strip(),
+                        predicate=str(item.get("predicate", "")).strip(),
+                        object=str(item.get("object", "")).strip(),
+                        confidence=float(item.get("confidence", 0.9)),
+                        source=str(item.get("source", "llm_extraction"))
+                    )
+                    # 过滤空值
+                    if fact.subject and fact.predicate and fact.object:
+                        facts.append(fact)
+                except Exception as e:
+                    logger.debug(f"跳过无效三元组: {item}, 原因: {e}")
+            
+            return facts
+            
+        except Exception as e:
+            logger.error(f"LLM抽取调用失败: {e}")
+            return []
+    
     def _call_mock_llm(self, text: str) -> KnowledgeExtractionResult:
-        """
-        模拟大模型的 JSON 结构化输出调用。
-        在真实环境中，这里对接 openai.beta.chat.completions.parse(..., response_format=KnowledgeExtractionResult)
-        """
+        """模拟LLM抽取（用于单元测试和离线开发）"""
         logger.info("[Mock LLM] Processing text for extraction...")
-        # 简单模拟：如果文本包含 safe 等关键词，尝试提取
         mock_facts = []
         if "Supplier 'SafeGas_Corp' has ISO9001" in text:
             mock_facts.append(FactSchema(
-                subject="SafeGas_Corp",
-                predicate="has_iso9001_cert",
-                object="true",
-                confidence=0.98,
-                source="doc_parsing"
-            ))
-            mock_facts.append(FactSchema(
-                subject="SafeGas_Corp",
-                predicate="operates_above_10bar",
-                object="true",
-                confidence=0.95,
-                source="doc_parsing"
+                subject="SafeGas_Corp", predicate="has_iso9001_cert",
+                object="true", confidence=0.98, source="doc_parsing"
             ))
         elif "risk" in text.lower():
-             mock_facts.append(FactSchema(
-                subject="SupplierA",
-                predicate="status",
-                object="high_risk",
-                confidence=0.7,
-                source="doc_parsing"
+            mock_facts.append(FactSchema(
+                subject="SupplierA", predicate="status",
+                object="high_risk", confidence=0.7, source="doc_parsing"
             ))
-        
         return KnowledgeExtractionResult(facts=mock_facts)
 
     def extract_from_text(self, text: str) -> List[Fact]:
         """
-        从文本中提取知识三元组
+        从文本中提取知识三元组。
+        
+        工业级管道流程：
+        1. 若文本长度 > CHUNK_THRESHOLD，自动分块
+        2. 每块独立调LLM抽取（避免一次性输出过长被截断）
+        3. 合并所有块的结果并去重
+        4. 转换为系统核心 Fact 对象
         
         Args:
-            text: 非结构化的输入文本（文档段落、聊天记录）
+            text: 非结构化的输入文本
             
         Returns:
-            List[Fact]: 转换后的标准本体事实对象列表
+            List[Fact]: 去重后的标准本体事实对象列表
         """
         logger.info(f"KnowledgeExtractor 开始提取知识 (长度: {len(text)})")
         
         try:
             if self.use_mock_llm:
                 extraction_result = self._call_mock_llm(text)
+                all_fact_schemas = extraction_result.facts
             else:
-                try:
-                    import os
-                    from openai import OpenAI
+                # 判断是否需要分块
+                if len(text) > self.CHUNK_THRESHOLD:
+                    chunks = self.chunker.chunk(text)
+                    if not chunks:
+                        # chunker 可能因文本格式无法识别标题而返回空
+                        # 降级为简单按段落分块
+                        chunks = self.chunker.chunk_by_paragraphs(text, min_tokens=50)
                     
-                    api_key = os.getenv("OPENAI_API_KEY", "sk-zueyelhrtzsngjdnqfnwfbsboockestuzwwhujpqrjmjmxyy")
-                    base_url = os.getenv("OPENAI_BASE_URL", "https://api.siliconflow.cn/v1")
-                    model_id = os.getenv("OPENAI_MODEL", "Pro/MiniMaxAI/MiniMax-M2.5")
+                    if not chunks:
+                        # 最后降级：直接按字符数切分
+                        chunk_texts = [text[i:i+self.CHUNK_THRESHOLD] 
+                                      for i in range(0, len(text), self.CHUNK_THRESHOLD)]
+                    else:
+                        chunk_texts = [c.text for c in chunks]
                     
-                    client = OpenAI(api_key=api_key, base_url=base_url)
-                    completion = client.beta.chat.completions.parse(
-                        model=model_id,
-                        messages=[
-                            {"role": "system", "content": "You are a precise ontological extraction bot. Extract formal RDF triples from unformatted text."},
-                            {"role": "user", "content": f"Extract formal triples from: {text}"}
-                        ],
-                        response_format=KnowledgeExtractionResult,
-                    )
-                    extraction_result = completion.choices[0].message.parsed
-                except ImportError:
-                    logger.error("OpenAI package not installed. run `pip install openai`.")
-                    return []
-                except Exception as e:
-                    logger.error(f"OpenAI (SiliconFlow) API error: {e}")
-                    # Fallback to empty if API fails in production
-                    return []
-
-            # 将 Pydantic Models 转换为系统的 Fact Core Objects
-            core_facts = []
-            for item in extraction_result.facts:
-                core_facts.append(Fact(
+                    logger.info(f"长文档分块: {len(chunk_texts)} 个块")
+                else:
+                    chunk_texts = [text]
+                
+                # 逐块抽取
+                all_fact_schemas = []
+                for i, chunk_text in enumerate(chunk_texts):
+                    logger.info(f"正在抽取第 {i+1}/{len(chunk_texts)} 块 (长度: {len(chunk_text)})")
+                    chunk_facts = self._extract_chunk(chunk_text)
+                    all_fact_schemas.extend(chunk_facts)
+                    logger.info(f"  → 本块抽取出 {len(chunk_facts)} 条三元组")
+            
+            # 去重（基于 subject+predicate+object 的唯一键）
+            seen = set()
+            unique_facts = []
+            for item in all_fact_schemas:
+                key = (item.subject, item.predicate, item.object)
+                if key not in seen:
+                    seen.add(key)
+                    unique_facts.append(item)
+            
+            # 转换为系统核心 Fact 对象
+            core_facts = [
+                Fact(
                     subject=item.subject,
                     predicate=item.predicate,
                     object=item.object,
                     confidence=item.confidence,
                     source=item.source
-                ))
+                )
+                for item in unique_facts
+            ]
             
-            logger.info(f"成功提取 {len(core_facts)} 条结构化事实")
+            logger.info(f"成功提取 {len(core_facts)} 条去重后的结构化事实 (原始: {len(all_fact_schemas)})")
             return core_facts
             
         except Exception as e:
