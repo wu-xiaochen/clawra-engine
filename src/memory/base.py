@@ -13,9 +13,17 @@ class SemanticMemory:
     存储经过验证的知识图谱。默认使用 Neo4j 作为高性能后端，并辅以 VectorStore 提供模糊语义检索 (Hybrid GraphRAG)。
     支持本体知识的持久化、检索、图查询和向量查询。
     """
-    def __init__(self, uri: str = "bolt://localhost:7687", 
-                 user: str = "neo4j", password: str = "neo4j"):
-        self.client = Neo4jClient(uri=uri, user=user, password=password)
+    def __init__(self, uri: str = "bolt://localhost:7687", user: str = "neo4j", password: str = "clawra2026", use_mock: bool = False):
+        self.uri = uri
+        self.user = user
+        self.password = password
+        self.use_mock = use_mock
+        
+        if not self.use_mock:
+            self.client = Neo4jClient(uri, user, password)
+        else:
+            self.client = None
+            
         self.vector_store = ChromaVectorStore()
         self.is_connected = False
         # 实体归一化映射表（同义词对齐）
@@ -59,27 +67,28 @@ class SemanticMemory:
         return name_stripped
 
     def store_fact(self, fact: Fact):
-        """将推理事实同步存入图数据库与向量数据库（含归一化控制）"""
-        # 执行实体归一化，防止图谱断裂
-        norm_subject = self.normalize_entity(fact.subject)
-        norm_object = self.normalize_entity(fact.object)
+        """将三元组事实持久化存入图数据库和向量库"""
+        # 1. 存入向量库 (Semantic Layer)
+        doc = Document(
+            content=f"{fact.subject} {fact.predicate} {fact.object}",
+            metadata={"source": fact.source, "confidence": fact.confidence}
+        )
+        self.vector_store.add_documents([doc])
         
-        self.client.create_entity(norm_subject, "Entity")
-        self.client.create_entity(norm_object, "Entity")
-        self.client.create_relationship(
-            norm_subject, norm_object, fact.predicate, 
-            confidence=fact.confidence
-        )
-        # 同步写入向量索引，保留原始语境以支持语义检索
-        vector_doc = Document(
-            content=f"{norm_subject} {fact.predicate} {norm_object}",
-            metadata={"source": fact.source, "confidence": fact.confidence, "orig_s": fact.subject, "orig_o": fact.object}
-        )
-        self.vector_store.add_documents([vector_doc])
+        # 2. 存入图数据库 (Logic Layer)
+        if self.is_connected and not self.use_mock:
+            try:
+                norm_subject = self.normalize_entity(fact.subject)
+                norm_object = self.normalize_entity(fact.object)
+                self.client.create_entity(norm_subject, "Entity")
+                self.client.create_entity(norm_object, "Entity")
+                self.client.create_relationship(norm_subject, fact.predicate, norm_object)
+            except Exception as e:
+                logger.warning(f"Neo4j Store Fact Failed: {e}")
 
     def query(self, concept: str, depth: int = 2) -> List[Any]:
         """查询语义网络中与该概念相关的精确图谱知识 (Graph Traversal)"""
-        if not self.is_connected:
+        if not self.is_connected or self.use_mock or not self.client:
             return []
         result = self.client.find_neighbors(concept, depth=depth)
         return result.nodes
@@ -147,7 +156,7 @@ class EpisodicMemory:
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             cursor.execute(
-                "INSERT INTO episodes (task_id, episode_data) VALUES (?, ?)",
+                "INSERT OR REPLACE INTO episodes (task_id, episode_data) VALUES (?, ?)",
                 (task_id, json.dumps(episode, ensure_ascii=False))
             )
             conn.commit()

@@ -1,7 +1,8 @@
 import os
 import json
 import logging
-from typing import Dict, Any, List
+import time
+from typing import Dict, Any, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -334,9 +335,9 @@ class CognitiveOrchestrator:
                             "reasoning_chain": reasoning_chain,
                             "facts_used": facts_used_refs,
                             "total_confidence": round(inference_result.total_confidence.value, 4),
-                            "agent_conclusion": str(agent_response)
+                            "metacognition": agent_response # 直接传递结构化字典
                         }
-                        tool_result_str = json.dumps({"status": "SUCCESS", "logic_engine_conclusion": str(agent_response)}, ensure_ascii=False)
+                        tool_result_str = json.dumps({"status": "SUCCESS", "logic_engine_conclusion": agent_response.get("result", "")}, ensure_ascii=False)
 
                     elif func_name == "execute_action":
                         response_data["intent"] = "ACTION"
@@ -399,7 +400,7 @@ class CognitiveOrchestrator:
 
         # 落基岩：写入人类反馈和情景记忆，以便未来重放
         self.episodic_memory.store_episode({
-            "task_id": f"orch_{str(hash(str(messages)) % 100000)}",
+            "task_id": f"orch_{int(time.time())}_{str(hash(str(messages)) % 100000)}",
             "messages_length": len(messages),
             "final_intent": response_data["intent"],
             "tool_use_count": len(response_data["trace"]),

@@ -223,8 +223,20 @@ def render_structured_trace(trace_data):
                 conf = result["total_confidence"]
                 st.metric("推理链整体置信度", f"{conf:.2%}")
             
-            # Agent 结论
-            if "agent_conclusion" in result:
+            # 元认知详情 (Metacognition)
+            if "metacognition" in result:
+                meta = result["metacognition"]
+                st.markdown(f"**💡 元认知结论:** {meta.get('result', '')}")
+                if "inference_steps" in meta and meta["inference_steps"]:
+                    with st.expander("🔍 详细推理链条 (Metacognitive Steps)", expanded=True):
+                        for i, s in enumerate(meta["inference_steps"], 1):
+                            st.markdown(
+                                f"  **Step {i}:** {s.get('rule', '逻辑推导')}\n"
+                                f"  - 前提: `{s.get('premise', '')}`\n"
+                                f"  - 结论: `{s.get('conclusion', '')}`\n"
+                                f"  - 置信度: **{s.get('confidence', 0):.2%}**"
+                            )
+            elif "agent_conclusion" in result:
                 st.markdown(f"**💡 元认知结论:** {result['agent_conclusion']}")
 
             # Action 执行详情
