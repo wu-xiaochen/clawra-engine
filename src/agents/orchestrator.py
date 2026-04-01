@@ -57,9 +57,10 @@ class CognitiveOrchestrator:
                     "parameters": {
                         "type": "object",
                         "properties": {
+                            "thought_process": {"type": "string", "description": "在调用此工具前，详细写出你的思考过程和意图。"},
                             "text": {"type": "string", "description": "用户提供的原始文本"}
                         },
-                        "required": ["text"]
+                        "required": ["thought_process", "text"]
                     }
                 }
             },
@@ -71,9 +72,10 @@ class CognitiveOrchestrator:
                     "parameters": {
                         "type": "object",
                         "properties": {
+                            "thought_process": {"type": "string", "description": "在调用知识图谱前，详细分析用户的需求，以及你需要从图谱中获取什么信息。"},
                             "query": {"type": "string", "description": "查询目标关键词或问题"}
                         },
-                        "required": ["query"]
+                        "required": ["thought_process", "query"]
                     }
                 }
             },
@@ -85,10 +87,11 @@ class CognitiveOrchestrator:
                     "parameters": {
                         "type": "object",
                         "properties": {
+                            "thought_process": {"type": "string", "description": "执行此动力学操作前的安全评估和逻辑推断。"},
                             "action_id": {"type": "string", "enum": [a["id"] for a in self.action_registry.list_actions()], "description": "Action ID"},
                             "params": {"type": "object", "description": "Action Params"}
                         },
-                        "required": ["action_id"]
+                        "required": ["thought_process", "action_id"]
                     }
                 }
             }
@@ -187,6 +190,17 @@ class CognitiveOrchestrator:
                     func_args = {}
                     
                 tool_start_time = time.time()
+                
+                # --- 强制提取结构化思考链 (CoT) ---
+                thought = func_args.get("thought_process")
+                if thought:
+                    response_data["trace"].append({
+                        "tool": "💭 神经元推导 (Internal Reasoning)",
+                        "args": {},
+                        "latency": "-",
+                        "result": {"summary": thought}
+                    })
+                
                 trace_node = {"tool": func_name, "args": func_args, "result": ""}
                 
                 # 审计
