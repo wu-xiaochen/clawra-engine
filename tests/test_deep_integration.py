@@ -24,10 +24,12 @@ async def test_glossary_enriches_extraction():
 
 @pytest.mark.asyncio
 async def test_auditor_blocks_fan_trap():
-    """验证审计智能体是否能拦截扇形陷阱"""
+    """验证审计智能体是否能拦截扇形陷阱 (V2 Graph-Backed)"""
     reasoner = Reasoner()
     semantic = SemanticMemory()
     episodic = EpisodicMemory()
+    # 模拟连接状态以启用图查询
+    semantic.is_connected = True
     orch = CognitiveOrchestrator(reasoner, semantic, episodic)
     
     # 构造一个带有聚合意图且涉及 N 端实体的查询

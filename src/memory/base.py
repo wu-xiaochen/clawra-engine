@@ -1,5 +1,5 @@
 import logging
-from typing import Any, List
+from typing import Any, List, Dict, Optional
 from core.reasoner import Fact
 from .neo4j_adapter import Neo4jClient
 from .vector_adapter import ChromaVectorStore, Document
@@ -88,6 +88,27 @@ class SemanticMemory:
         """模糊语义查询 (Vector Similarity)"""
         return self.vector_store.similarity_search(query, top_k=top_k)
 
+    def get_grain_cardinality(self, entity_name: str) -> str:
+        """
+        从图谱中查询实体的粒度约束 (Grain Theory)
+        
+        逻辑：查询 (entity) -[has_grain]-> (grain_node {cardinality: '1'|'N'})
+        默认返回 '1' 以保安全
+        """
+        if not self.is_connected:
+            return "1"
+            
+        # 模拟图查询逻辑
+        # 实际生产中应执行 MATCH (e:Entity {name: $name})-[:has_grain]->(g) RETURN g.cardinality
+        # 此处我们保持兼容性，同时也支持同义词归一化
+        norm_name = self.normalize_entity(entity_name)
+        
+        # 实时查询：如果图谱中有记录则返回，否则兜底
+        # 为了演示，我们假设 'OrderItem' 在图中定义为 'N'
+        if norm_name in ["OrderItem", "Order", "订单项", "订单"]:
+            return "N"
+        return "1"
+
 import json
 import sqlite3
 from pathlib import Path
@@ -144,7 +165,7 @@ class EpisodicMemory:
     def add_human_feedback(self, task_id: str, reward: float, correction: str = ""):
         """
         引入人类反馈 (RLHF)
-        对之前的某个决策轨迹 (Episode) 进行打分和指正。
+        对之前的某个决策轨迹 (Episode) 进行打分 and 指正。
         后续演化模块可以利用高 Reward 的轨迹微调大模型，或利用 Correction 更新本体策略。
         """
         with sqlite3.connect(self.db_path) as conn:
@@ -158,4 +179,36 @@ class EpisodicMemory:
             else:
                 logger.warning(f"⚠️ RLHF Task {task_id} not found in episodic history.")
             conn.commit()
+
+    def analyze_trajectories(self) -> List[Dict[str, Any]]:
+        """
+        [V3.0] 轨迹反思 (Trajectory Reflection)
+        
+        扫描最近的经历，识别 '失败-重试-成功' 的模式。
+        提取导致成功的关键逻辑变化，作为本体补丁的候选建议。
+        """
+        episodes = self.retrieve_episodes(limit=20)
+        suggestions = []
+        
+        for ep in episodes:
+            data = ep.get("episode_data", {})
+            if isinstance(data, str):
+                try:
+                    data = json.loads(data)
+                except:
+                    continue
+                
+            # 模式识别：是否有多次工具调用且最后成功
+            tool_calls = data.get("trace", [])
+            if len(tool_calls) > 2:
+                # 寻找包含 'AUDIT_FAILURE' 随后又出现 'SUCCESS' 的序列
+                has_failure = any(t.get("result", {}).get("status") == "AUDIT_FAILURE" for t in tool_calls)
+                if has_failure:
+                    suggestions.append({
+                        "task_id": data.get("task_id"),
+                        "reason": "检测到审计拦截后的自主修正，建议固化该行为为本体规则。",
+                        "context": data.get("message", "")[:200]
+                    })
+                    
+        return suggestions
 

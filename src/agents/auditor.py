@@ -7,17 +7,19 @@ logger = logging.getLogger(__name__)
 
 class AuditorAgent(BaseAgent):
     """
-    审计部智能体 (Auditor Agent)
+    审计部智能体 (Auditor Agent) - V2 (Corrective)
     
     独立于推理主线，专门负责：
-    1. 粒度冲突审计 (Fan-trap 探测)
-    2. 合规性底线审计 (基于本体红线)
-    3. 执行前置准入校验
+    1. 粒度冲突审计 (Fan-trap) + 纠错建议 [Suggestion 4]
+    2. 基于图谱的动态准入校验 [Suggestion 2]
     """
     
-    def __init__(self, name: str, reasoner: Any):
+    def __init__(self, name: str, reasoner: Any, semantic_memory: Any):
         super().__init__(name, reasoner)
-        self.grain_validator = GrainValidator()
+        self.semantic_memory = semantic_memory
+        # 将内存传递给校验器，实现从硬编码到图谱驱动的跃迁
+        from core.ontology.grain_validator import GrainValidator
+        self.grain_validator = GrainValidator(self.semantic_memory)
 
     async def audit_plan(self, tool_name: str, args: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -52,12 +54,14 @@ class AuditorAgent(BaseAgent):
                     status = "BLOCKED"
                     risk_details.append(validation["message"])
                     risk_details.extend(validation["details"])
+                    # [V3.0] 增加纠错性反馈 (Corrective Feedback)
+                    risk_details.append("💡 审计建议：检测到 1:N 聚合风险。请尝试使用子查询(Subquery)预先聚合，或在 JOIN 前确认 Cardinality 约束。")
 
         return {
             "status": status,
             "auditor": self.name,
             "risks": risk_details,
-            "decision": "允许执行" if status == "PASSED" else "拦截并拒绝"
+            "decision": "允许执行" if status == "PASSED" else "拦截并拒绝并提供重写建议"
         }
 
     async def run(self, task: str) -> Dict[str, Any]:

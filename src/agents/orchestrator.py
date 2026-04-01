@@ -11,6 +11,7 @@ from perception.extractor import KnowledgeExtractor
 from evolution.self_correction import ContradictionChecker
 from agents.metacognition import MetacognitiveAgent
 from agents.auditor import AuditorAgent
+from core.memory.skills import SkillRegistry
 from perception.glossary_engine import GlossaryEngine
 from core.ontology.actions import ActionRegistry, ActionType
 
@@ -32,8 +33,9 @@ class CognitiveOrchestrator:
         self.extractor = KnowledgeExtractor(use_mock_llm=False)
         self.sentinel = ContradictionChecker(self.reasoner, self.semantic_memory)
         self.reasoning_agent = MetacognitiveAgent(name="Clawra_Thinker", reasoner=self.reasoner)
-        self.auditor = AuditorAgent(name="Safety_Auditor", reasoner=self.reasoner)
+        self.auditor = AuditorAgent(name="Safety_Auditor", reasoner=self.reasoner, semantic_memory=self.semantic_memory)
         self.glossary_engine = GlossaryEngine()
+        self.skill_registry = SkillRegistry(semantic_memory=self.semantic_memory)
         self.action_registry = ActionRegistry()
         self._wire_action_logics()
 
