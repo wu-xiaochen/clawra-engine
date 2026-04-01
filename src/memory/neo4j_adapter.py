@@ -324,6 +324,26 @@ class Neo4jClient:
     
     # ==================== 关系CRUD ====================
     
+    @staticmethod
+    def _sanitize_rel_type(rel_type: str) -> str:
+        """
+        消毒关系类型名称，确保只含Cypher合法字符。
+        Neo4j关系类型只允许字母、数字、下划线。
+        
+        Examples:
+            'rdf:type'     → 'rdf_type'
+            'has property' → 'has_property'
+            '距离/要求'    → '距离_要求'
+        """
+        import re
+        # 替换所有非字母数字和非CJK字符为下划线
+        sanitized = re.sub(r'[^a-zA-Z0-9_\u4e00-\u9fff\u3400-\u4dbf]', '_', rel_type)
+        # 去掉开头的数字或下划线
+        sanitized = re.sub(r'^[0-9_]+', '', sanitized)
+        # 连续下划线合并
+        sanitized = re.sub(r'_+', '_', sanitized).strip('_')
+        return sanitized or 'RELATED_TO'
+
     def create_relationship(self, start_name: str, end_name: str,
                            rel_type: str,
                            properties: Optional[Dict] = None,
@@ -343,11 +363,14 @@ class Neo4jClient:
         Returns:
             创建的关系
         """
+        # 消毒关系类型，防止Cypher注入和语法错误
+        safe_rel_type = self._sanitize_rel_type(rel_type)
+        
         rel = GraphRelationship(
-            type=rel_type,
+            type=safe_rel_type,
             start_node=start_name,
             end_node=end_name,
-            properties=properties or {},
+            properties=properties or {"original_predicate": rel_type},
             confidence=confidence,
             source=source,
             created_at=datetime.now().isoformat()
@@ -356,35 +379,36 @@ class Neo4jClient:
         if self._connected:
             with self.session() as session:
                 query = f"""
-                MATCH (a), (b)
-                WHERE a.name = $start AND b.name = $end
-                CREATE (a)-[r:{rel_type} $props]->(b)
+                MERGE (a:Entity {{name: $start}})
+                MERGE (b:Entity {{name: $end}})
+                CREATE (a)-[r:{safe_rel_type}]->(b)
                 SET r.id = randomUUID()
                 SET r.confidence = $confidence
                 SET r.source = $source
                 SET r.created_at = $created_at
+                SET r.original_predicate = $original_pred
                 RETURN r
                 """
                 result = session.run(
                     query,
                     start=start_name,
                     end=end_name,
-                    props=rel.properties,
                     confidence=confidence,
                     source=source,
-                    created_at=rel.created_at
+                    created_at=rel.created_at,
+                    original_pred=rel_type
                 )
                 record = result.single()
                 if record:
                     rel.id = record["r"]["id"]
         else:
-            rel.id = f"{start_name}_{rel_type}_{end_name}"
+            rel.id = f"{start_name}_{safe_rel_type}_{end_name}"
         
         # 缓存
-        cache_key = f"{start_name}_{rel_type}_{end_name}"
+        cache_key = f"{start_name}_{safe_rel_type}_{end_name}"
         self._relationship_index[cache_key] = rel
         
-        logger.info(f"Created relationship: {start_name} -[{rel_type}]-> {end_name}")
+        logger.info(f"Created relationship: {start_name} -[{safe_rel_type}]-> {end_name}")
         return rel
     
     def get_relationships(self, entity_name: str,

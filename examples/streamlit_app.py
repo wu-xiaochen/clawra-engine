@@ -69,7 +69,21 @@ with st.sidebar:
             import matplotlib
             matplotlib.use('Agg')
             import matplotlib.pyplot as plt
+            import matplotlib.font_manager as fm
             import networkx as nx
+
+            # F4 修复：配置中文字体（macOS 系统自带）
+            chinese_fonts = ['PingFang SC', 'STHeiti', 'Heiti TC', 'Arial Unicode MS', 'SimHei']
+            font_set = False
+            for font_name in chinese_fonts:
+                matches = [f for f in fm.fontManager.ttflist if font_name in f.name]
+                if matches:
+                    plt.rcParams['font.sans-serif'] = [font_name] + plt.rcParams['font.sans-serif']
+                    plt.rcParams['axes.unicode_minus'] = False
+                    font_set = True
+                    break
+            if not font_set:
+                plt.rcParams['axes.unicode_minus'] = False
 
             G = nx.DiGraph()
             for fact in reasoner.facts:
