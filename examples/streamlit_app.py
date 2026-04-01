@@ -240,7 +240,7 @@ for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
         if "trace" in msg and msg["trace"]:
-            with st.expander("🧐 深度认知轨迹 (High-Fidelity Reasoning Trace)", expanded=False):
+            with st.expander("🧐 深度认知轨迹 (High-Fidelity Reasoning Trace)", expanded=True):
                 for node in msg["trace"]:
                     render_trace_node(node)
 

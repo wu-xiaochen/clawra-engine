@@ -136,7 +136,8 @@ class CognitiveOrchestrator:
                     custom_prompt or (
                         f"[Clawra Cognitive Kernel]\n{self.project_context}\n\n"
                         "1. ALWAYS think step-by-step and explain your logical reasoning in your message content BEFORE calling any tool.\n"
-                        "2. Use 'ingest_knowledge' for new data. 3. Use 'query_graph' for reasoning. YOU MUST USE TOOLS."
+                        "2. Use 'ingest_knowledge' for new data. 3. Use 'query_graph' for reasoning. YOU MUST USE TOOLS.\n"
+                        "4. CRITICAL: DO NOT use the term '知识库' (knowledge base). You are a Cognitive Agent operating on a '动态本体网络' (Dynamic Ontology Network) or '系统图谱' (System Graph)."
                     )
                 )
             }
