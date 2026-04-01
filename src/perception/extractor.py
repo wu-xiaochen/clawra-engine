@@ -82,14 +82,25 @@ class KnowledgeExtractor:
             if self.use_mock_llm:
                 extraction_result = self._call_mock_llm(text)
             else:
-                # 真实 LLM 调用的占位符，需引入 openai sdk 
-                # completion = client.beta.chat.completions.parse(
-                #     model="gpt-4o",
-                #     messages=[{"role": "user", "content": f"Extract formal triples from: {text}"}],
-                #     response_format=KnowledgeExtractionResult,
-                # )
-                # extraction_result = completion.choices[0].message.parsed
-                raise NotImplementedError("Real LLM extraction requires API configuration.")
+                try:
+                    from openai import OpenAI
+                    client = OpenAI() # expects OPENAI_API_KEY environment variable
+                    completion = client.beta.chat.completions.parse(
+                        model="gpt-4o-mini",
+                        messages=[
+                            {"role": "system", "content": "You are a precise ontological extraction bot. Extract formal RDF triples from unformatted text."},
+                            {"role": "user", "content": f"Extract formal triples from: {text}"}
+                        ],
+                        response_format=KnowledgeExtractionResult,
+                    )
+                    extraction_result = completion.choices[0].message.parsed
+                except ImportError:
+                    logger.error("OpenAI package not installed. run `pip install openai`.")
+                    return []
+                except Exception as e:
+                    logger.error(f"OpenAI API error: {e}")
+                    # Fallback to empty if API fails in production
+                    return []
 
             # 将 Pydantic Models 转换为系统的 Fact Core Objects
             core_facts = []

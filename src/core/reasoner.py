@@ -235,6 +235,7 @@ class Reasoner:
         self,
         initial_facts: Optional[list[Fact]] = None,
         max_depth: int = 10,
+        timeout_seconds: float = 5.0,
         direction: InferenceDirection = InferenceDirection.FORWARD
     ) -> InferenceResult:
         """
@@ -259,7 +260,13 @@ class Reasoner:
         working_facts = list(self.facts)
         seen_triples = {(f.subject, f.predicate, f.object) for f in working_facts}
         
+        import time
+        start_time = time.time()
         for depth in range(max_depth):
+            if time.time() - start_time > timeout_seconds:
+                logger.error(f"⚠️ Circuit Breaker Triggered (Forward Chain): Exceeded {timeout_seconds}s limit at depth {depth}.")
+                break
+            
             new_facts = []
             
             for fact in working_facts:
@@ -335,7 +342,8 @@ class Reasoner:
     def backward_chain(
         self,
         goal: Fact,
-        max_depth: int = 10
+        max_depth: int = 10,
+        timeout_seconds: float = 5.0
     ) -> InferenceResult:
         """
         后向链推理
@@ -356,7 +364,13 @@ class Reasoner:
         # 队列: (目标事实, 深度, 路径)
         queue = [(goal, 0, [])]
         
+        import time
+        start_time = time.time()
+        
         while queue:
+            if time.time() - start_time > timeout_seconds:
+                logger.error(f"⚠️ Circuit Breaker Triggered (Backward Chain): Exceeded {timeout_seconds}s limit.")
+                break
             current_goal, depth, path = queue.pop(0)
             
             if depth >= max_depth:

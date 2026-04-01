@@ -2,7 +2,7 @@ import logging
 from typing import Any, List
 from core.reasoner import Fact
 from .neo4j_adapter import Neo4jClient
-from .vector_adapter import LightweightVectorStore, Document
+from .vector_adapter import ChromaVectorStore, Document
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ class SemanticMemory:
     def __init__(self, uri: str = "bolt://localhost:7687", 
                  user: str = "neo4j", password: str = "neo4j"):
         self.client = Neo4jClient(uri=uri, user=user, password=password)
-        self.vector_store = LightweightVectorStore()
+        self.vector_store = ChromaVectorStore()
         self.is_connected = False
         
     def connect(self):
@@ -76,9 +76,11 @@ class EpisodicMemory:
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS episodes (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    task_id TEXT,
+                    task_id TEXT UNIQUE,
                     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    episode_data JSON
+                    episode_data JSON,
+                    reward REAL DEFAULT 0.0,
+                    correction TEXT
                 )
             ''')
             conn.commit()
@@ -103,4 +105,22 @@ class EpisodicMemory:
             cursor.execute("SELECT episode_data FROM episodes ORDER BY timestamp DESC LIMIT ?", (limit,))
             rows = cursor.fetchall()
             return [json.loads(row[0]) for row in rows]
+
+    def add_human_feedback(self, task_id: str, reward: float, correction: str = ""):
+        """
+        引入人类反馈 (RLHF)
+        对之前的某个决策轨迹 (Episode) 进行打分和指正。
+        后续演化模块可以利用高 Reward 的轨迹微调大模型，或利用 Correction 更新本体策略。
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "UPDATE episodes SET reward = ?, correction = ? WHERE task_id = ?",
+                (reward, correction, task_id)
+            )
+            if cursor.rowcount > 0:
+                logger.info(f"👍 RLHF Feedback recorded for task {task_id}: Score={reward}")
+            else:
+                logger.warning(f"⚠️ RLHF Task {task_id} not found in episodic history.")
+            conn.commit()
 

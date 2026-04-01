@@ -24,7 +24,7 @@ class CognitiveOrchestrator:
         self.episodic_memory = episodic_mem
         
         self.extractor = KnowledgeExtractor(use_mock_llm=True)
-        self.sentinel = ContradictionChecker(self.reasoner)
+        self.sentinel = ContradictionChecker(self.reasoner, self.semantic_memory)
         self.reasoning_agent = MetacognitiveAgent(name="Clawra_Thinker", reasoner=self.reasoner)
 
     def _determine_intent(self, text: str) -> str:

@@ -1,5 +1,5 @@
 import logging
-from typing import List
+from typing import Any, List, Optional
 from core.reasoner import Reasoner, Fact
 
 logger = logging.getLogger(__name__)
@@ -11,14 +11,30 @@ class ContradictionChecker:
     安全机制：在将大模型提取的新知识或自我蒸馏的新规则存入 Semantic Memory 之前，
     必须通过此类进行公理冲突检测。防止知识图谱发生数据污染 (Data Poisoning)。
     """
-    def __init__(self, reasoner: Reasoner):
+    def __init__(self, reasoner: Reasoner, semantic_mem: Optional[Any] = None):
         self.reasoner = reasoner
+        self.semantic_mem = semantic_mem
 
     def _find_antonyms(self, predicate: str, object_val: str) -> List[str]:
         """
-        （简化版）反义词/互斥状态查找。
-        真实的工业环境会查询 OWL 语言中的 disjointWith 属性。
+        动态查询 Neo4j 中的 owl:disjointWith 属性，寻找互斥概念。
+        如果未连接外部图库，执行降级保护。
         """
+        if self.semantic_mem and getattr(self.semantic_mem, 'is_connected', False):
+            driver = self.semantic_mem.client.driver
+            if driver:
+                query = """
+                MATCH (a:Entity {id: $obj})-[:disjointWith]-(b:Entity)
+                RETURN b.id AS antonym
+                """
+                try:
+                    with driver.session() as session:
+                        result = session.run(query, obj=object_val)
+                        return [record["antonym"] for record in result]
+                except Exception as e:
+                    logger.error(f"Neo4j Sentinel Query Error: {e}")
+        
+        # 降级：基于本地规则集
         antonyms = {
             "high_risk": ["safe", "low_risk"],
             "safe": ["high_risk", "danger"],
