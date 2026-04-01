@@ -240,7 +240,7 @@ for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
         if "trace" in msg and msg["trace"]:
-            with st.expander("🧐 深度认知轨迹 (High-Fidelity Reasoning Trace)", expanded=True):
+            with st.status("✨ 深度认知轨迹 (High-Fidelity Reasoning Trace)", state="complete", expanded=True):
                 for node in msg["trace"]:
                     render_trace_node(node)
 
@@ -276,7 +276,7 @@ if prompt := st.chat_input("灌输知识或发起逻辑查询..."):
                     _run_in_new_loop, 
                     current_orch,
                     current_msgs, 
-                    custom_system_prompt
+                    st.session_state.get("custom_system_prompt")
                 )
                 response = future.result()
             
@@ -287,7 +287,13 @@ if prompt := st.chat_input("灌输知识或发起逻辑查询..."):
             for node in trace_logs:
                 status.write(f"✅ {node.get('tool')} ({node.get('latency', '0s')})")
             
-            status.update(label=f"✨ 推理完成 (耗时 {latency:.2f}s)", state="complete", expanded=False)
+            status.update(label=f"✨ 推理完成 (耗时 {latency:.2f}s)", state="complete", expanded=True)
+            
+            # 渲染推导轨迹中的每个节点到 status 块中，让其具有延续性
+            with status:
+                st.markdown("---")
+                for node in trace_logs:
+                    render_trace_node(node)
             
             # 显示回复
             st.markdown(response["message"])
@@ -299,8 +305,7 @@ if prompt := st.chat_input("灌输知识或发起逻辑查询..."):
                 "trace": trace_logs
             })
             
-            # 强制刷新 UI
-            st.rerun()
+            # 移除了 st.rerun()，让当前这轮优美的动画和状态框永久驻留在本次运行中。
 
         except Exception as e:
             st.error(f"致命故障: {e}")
