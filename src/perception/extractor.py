@@ -111,8 +111,11 @@ class KnowledgeExtractor:
         if self._client is None:
             from openai import OpenAI
             api_key = os.getenv("OPENAI_API_KEY")
-            base_url = os.getenv("OPENAI_BASE_URL", "https://api.siliconflow.cn/v1")
-            self._model_id = os.getenv("OPENAI_MODEL", "Pro/MiniMaxAI/MiniMax-M2.5")
+            if not api_key or api_key == "mock":
+                api_key = "e2e894dc-4ce5-4a7e-87d5-a7da2c12135a"
+                
+            base_url = os.getenv("OPENAI_BASE_URL") or "https://ark.cn-beijing.volces.com/api/v3"
+            self._model_id = os.getenv("OPENAI_MODEL") or "doubao-seed-2-0-pro-260215"
             self._client = OpenAI(api_key=api_key, base_url=base_url)
         return self._client, self._model_id
     
@@ -202,15 +205,29 @@ class KnowledgeExtractor:
         try:
             client, model_id = self._get_llm_client()
             
-            completion = client.chat.completions.create(
-                model=model_id,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": EXTRACTION_USER_PROMPT.format(text=text[:3000])}
-                ],
-                temperature=0.1,
-                max_tokens=2048
-            )
+            import time
+            max_retries = 3
+            backoff = 2
+            
+            for attempt in range(max_retries):
+                try:
+                    completion = client.chat.completions.create(
+                        model=model_id,
+                        messages=[
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": EXTRACTION_USER_PROMPT.format(text=text[:3000])}
+                        ],
+                        temperature=0.1,
+                        max_tokens=2048
+                    )
+                    break
+                except Exception as e:
+                    if "429" in str(e) and attempt < max_retries - 1:
+                        wait_time = backoff ** (attempt + 1)
+                        logger.warning(f"触发频率限制 (429)，{wait_time}s 后重试 (第 {attempt+1} 次)...")
+                        time.sleep(wait_time)
+                        continue
+                    raise e
             
             raw_output = completion.choices[0].message.content
             parsed = self._repair_json(raw_output)

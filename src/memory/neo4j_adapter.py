@@ -808,6 +808,19 @@ class Neo4jClient:
         
         logger.info(f"Batch imported {len(triples)} triples")
     
+    def get_sample_triples(self, limit: int = 50) -> List[Dict]:
+        """获取图谱中的三元组样本用于可视化"""
+        if not self._connected:
+            return []
+        try:
+            with self.session() as session:
+                query = "MATCH (n:Entity)-[r]->(m:Entity) RETURN n.name as s, type(r) as p, m.name as o LIMIT $limit"
+                result = session.run(query, limit=limit)
+                return [{"subject": r["s"], "predicate": r["p"], "object": r["o"]} for r in result]
+        except Exception as e:
+            logger.warning(f"Failed to get sample triples: {e}")
+            return []
+            
     def create_entity_index(self):
         """创建索引"""
         if not self._connected:

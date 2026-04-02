@@ -17,10 +17,15 @@ from typing import Any, Optional
 from collections import defaultdict
 from enum import Enum
 
+# Configure logging first
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 try:
     from .loader import OntologyLoader, OntologyClass, OntologyProperty, OntologyIndividual
-except ImportError:
-    # 兼容处理
+except ImportError as e:
+    logger.warning(f"OntologyLoader not available: {e}. Some ontology features will be limited.")
+    # Create stub classes for graceful degradation
     OntologyLoader = None
     OntologyClass = None
     OntologyProperty = None
@@ -28,8 +33,9 @@ except ImportError:
     
 try:
     from ..eval.confidence import ConfidenceCalculator, ConfidenceResult, Evidence
-except ImportError:
-    # 如果confidence模块不存在，创建兼容的类
+except ImportError as e:
+    # If confidence module not available, create compatible fallback classes
+    logger.warning(f"Confidence module not available: {e}. Using simplified confidence calculation.")
     from dataclasses import dataclass
     from typing import Any, Optional, List
     
@@ -66,10 +72,6 @@ except ImportError:
             if method == "min":
                 return min(confidences)
             return sum(confidences) / len(confidences)
-
-# 配置日志
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 
 class RuleType(Enum):
@@ -366,7 +368,7 @@ class Reasoner:
         """
         # BFS 后向推理
         conclusions: list[InferenceStep] = []
-        used_facts: list[Fact] = []
+        used_facts: set[Fact] = set()  # Use set for efficient membership checking
         
         # 队列: (目标事实, 深度, 路径)
         queue = [(goal, 0, [])]

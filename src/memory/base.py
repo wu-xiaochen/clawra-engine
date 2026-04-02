@@ -66,6 +66,28 @@ class SemanticMemory:
                 return self.entity_synonyms[key]
         return name_stripped
 
+    def get_total_facts_count(self) -> int:
+        """从 Neo4j 获取总事实（关系）数量"""
+        if not self.is_connected or self.use_mock or not self.client:
+            return 0
+        try:
+            query = "MATCH (n)-[r]->(m) RETURN count(r) as c"
+            # 注意：Neo4jClient 需要暴露一个执行原生查询的方法，或通过 session 访问
+            with self.client.session() as session:
+                result = session.run(query)
+                record = result.single()
+                return record["c"] if record else 0
+        except Exception as e:
+            logger.warning(f"Failed to get total facts count: {e}")
+            return 0
+
+    def get_sample_triples(self, limit: int = 50) -> List[Fact]:
+        """获取图谱样本并转换为 Fact 对象"""
+        if not self.is_connected or self.use_mock or not self.client:
+            return []
+        triples = self.client.get_sample_triples(limit)
+        return [Fact(t["subject"], t["predicate"], t["object"], source="neo4j_sample") for t in triples]
+
     def store_fact(self, fact: Fact):
         """将三元组事实持久化存入图数据库和向量库"""
         # 1. 存入向量库 (Semantic Layer)
@@ -100,21 +122,24 @@ class SemanticMemory:
     def get_grain_cardinality(self, entity_name: str) -> str:
         """
         从图谱中查询实体的粒度约束 (Grain Theory)
-        
+            
         逻辑：查询 (entity) -[has_grain]-> (grain_node {cardinality: '1'|'N'})
         默认返回 '1' 以保安全
         """
         if not self.is_connected:
             return "1"
+                
+        # Normalize entity name before checking
+        norm_name = self.normalize_entity(entity_name)
             
         # 真实环境下的粒度查询应依赖图谱中的事实
         # MATCH (e:Entity {name: $norm_name})-[:has_grain]->(g) RETURN g.cardinality
-        
+            
         # 为了框架开源可用性，我们提供一种基于规则的兜底评估
-        # 凡是带有“清单”、“项”、“明细”、“列表”的实体，默认为 N 端 (Many)
+        # 凡是带有"清单"、"项"、"明细"、"列表"的实体，默认为 N 端 (Many)
         if any(keyword in norm_name for keyword in ["Item", "List", "Detail", "项", "明细", "清单", "列表"]):
             return "N"
-            
+                
         # 默认返回 '1' 以保安全
         return "1"
 

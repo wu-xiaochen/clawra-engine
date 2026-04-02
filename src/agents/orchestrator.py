@@ -7,7 +7,7 @@ from typing import Dict, Any, List, Optional
 
 logger = logging.getLogger(__name__)
 
-from core.reasoner import Reasoner
+from core.reasoner import Reasoner, Fact
 from memory.base import SemanticMemory, EpisodicMemory
 from perception.extractor import KnowledgeExtractor
 from evolution.self_correction import ContradictionChecker
@@ -128,8 +128,12 @@ class CognitiveOrchestrator:
     async def execute_task(self, messages: List[Dict[str, str]], custom_prompt: Optional[str] = None) -> Dict[str, Any]:
         from openai import OpenAI
         api_key = os.getenv("OPENAI_API_KEY")
-        base_url = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
-        model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+        if not api_key or api_key == "mock":
+            logger.error("OPENAI_API_KEY environment variable not set or set to 'mock'")
+            return {"intent": "ERROR", "message": "⚠️ OPENAI_API_KEY environment variable not configured. Please set it in .env file or environment.", "trace": []}
+            
+        base_url = os.getenv("OPENAI_BASE_URL") or "https://ark.cn-beijing.volces.com/api/v3"
+        model = os.getenv("OPENAI_MODEL") or "doubao-seed-2-0-pro-260215"
         
         if not api_key:
             return {"intent": "ERROR", "message": "⚠️ 缺少 API Key", "trace": []}
@@ -161,12 +165,24 @@ class CognitiveOrchestrator:
 
         while loop_counter < max_loops:
             loop_counter += 1
-            completion = client.chat.completions.create(
-                model=model,
-                messages=local_messages,
-                tools=self._get_tools(),
-                temperature=0.1
-            )
+            max_retries = 3
+            backoff = 2
+            for attempt in range(max_retries):
+                try:
+                    completion = client.chat.completions.create(
+                        model=model,
+                        messages=local_messages,
+                        tools=self._get_tools(),
+                        temperature=0.1
+                    )
+                    break
+                except Exception as e:
+                    if "429" in str(e) and attempt < max_retries - 1:
+                        wait_time = backoff ** (attempt + 1)
+                        logger.warning(f"Orchestrator 触发频率限制 (429)，{wait_time}s 后重试...")
+                        time.sleep(wait_time)
+                        continue
+                    raise e
             
             response_message = completion.choices[0].message
             local_messages.append(response_message.model_dump(exclude_unset=True))
@@ -249,8 +265,29 @@ class CognitiveOrchestrator:
                         context_docs = [doc.content for doc in vector_context]
                         entities = re.findall(r'[\u4e00-\u9fa5\w]{2,}', query)
                         
+                        # [GraphRAG] 从图数据库拉取相关事实进 Reasoner
+                        if self.semantic_memory.is_connected:
+                            for entity in entities:
+                                try:
+                                    # 深度为1的邻居查询
+                                    result = self.semantic_memory.client.find_neighbors(entity, depth=1)
+                                    for rel in result.relationships:
+                                        f = Fact(
+                                            subject=rel.start_node, 
+                                            predicate=rel.type, 
+                                            object=rel.end_node,
+                                            source="graph_rag_injection"
+                                        )
+                                        self.reasoner.add_fact(f)
+                                except Exception as e:
+                                    logger.warning(f"GraphRAG 注入失败 (实体: {entity}): {e}")
+                        
                         inference_result = self.reasoner.forward_chain(max_depth=5)
-                        agent_response = await self.reasoning_agent.run(f"Query: {query} \nContext: {' | '.join(context_docs)}")
+                        
+                        if not context_docs and not inference_result.conclusions:
+                            agent_response = await self.reasoning_agent.run(f"Query: {query} \nContext: [SYSTEM_WARNING_GRAPH_EMPTY] 未检索到任何图谱数据。请根据你的人格设定自行判断是否基于常识作答，或主动引导用户输入相关知识。")
+                        else:
+                            agent_response = await self.reasoning_agent.run(f"Query: {query} \nContext: {' | '.join(context_docs)}")
                         
                         trace_node["result"] = {
                             "status": "SUCCESS",

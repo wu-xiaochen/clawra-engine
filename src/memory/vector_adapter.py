@@ -30,16 +30,34 @@ class VectorStore(ABC):
 
 class ChromaVectorStore(VectorStore):
     """
-    工业级向量数据库 (ChromaDB Integration)
+    Industrial-grade Vector Database (ChromaDB Integration)
     
-    使用 ChromaDB 作为本地向量存储层，提供精确的 Embedding 检索，
-    结合 Neo4j 的图遍历，实现真正的企业级 Hybrid GraphRAG。
+    Uses ChromaDB as local vector storage, providing precise Embedding retrieval,
+    combined with Neo4j graph traversal for true enterprise-grade Hybrid GraphRAG.
     """
     def __init__(self, persist_directory: str = "data/chroma_db", collection_name: str = "clawra_knowledge"):
         if chromadb is None:
             raise ImportError("chromadb is not installed. Please install it via `pip install chromadb`")
         
-        self.client = chromadb.PersistentClient(path=persist_directory)
+        # Use PersistentClient with anonymous tenant/database for compatibility
+        try:
+            # Use string literals for maximum compatibility across ChromaDB versions
+            self.client = chromadb.PersistentClient(
+                path=persist_directory,
+                tenant="default_tenant",
+                database="default_database"
+            )
+        except Exception as e:
+            # Fallback: try without tenant/database params for older ChromaDB versions
+            logger.warning(f"ChromaDB initialization with tenant/database failed: {e}. Trying fallback.")
+            try:
+                self.client = chromadb.PersistentClient(path=persist_directory)
+            except Exception as e2:
+                logger.error(f"All ChromaDB initialization attempts failed: {e2}")
+                # Last resort: use in-memory client
+                self.client = chromadb.Client()
+        
+        
         self.collection = self.client.get_or_create_collection(name=collection_name)
         
     def add_documents(self, documents: List[Document]) -> None:

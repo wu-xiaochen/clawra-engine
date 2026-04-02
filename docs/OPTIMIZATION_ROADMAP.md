@@ -8,8 +8,8 @@
 
 ### 1.1 修复安装兼容性
 - [x] 确认 src/ 布局配置正确
-- [ ] 移除空的 ontology_platform/ 目录避免混淆
-- [ ] 添加 src/ontology_platform/__init__.py 作为统一入口
+- [x] 移除空的 ontology_platform/ 目录避免混淆
+- [x] 添加 src/ontology_platform/__init__.py 作为统一入口
 
 ### 1.2 分层上下文分块（Hierarchical Context Chunking）
 - [ ] 创建 `src/chunking/` 模块
@@ -17,9 +17,9 @@
 - [ ] 添加 LLM max_tokens 自适应适配
 
 ### 1.3 OWL 语义增强
-- [ ] 在 `errors.py` 中增加 OWA（开放世界假设）说明
-- [ ] 添加约束 vs OWL 限制的区分注释
-- [ ] 增强 prompt 工程文档
+- [x] 在 `errors.py` 中增加 OWA（开放世界假设）说明
+- [x] 添加约束 vs OWL 限制的区分注释
+- [x] 增强 prompt 工程文档
 
 ### 1.4 文档完善
 - [ ] 更新 README 添加长文档处理说明

@@ -36,7 +36,7 @@ class ErrorCode(str, Enum):
     FORBIDDEN = "FORBIDDEN"
     RATE_LIMITED = "RATE_LIMITED"
     
-    # Ontology errors
+    # Ontology errors (Note: All evaluation is subject to OWL Open World Assumption - OWA, missing facts do NOT mean false)
     ONTOLOGY_NOT_FOUND = "ONTOLOGY_NOT_FOUND"
     SCHEMA_VIOLATION = "SCHEMA_VIOLATION"
     INVALID_TRIPLE = "INVALID_TRIPLE"

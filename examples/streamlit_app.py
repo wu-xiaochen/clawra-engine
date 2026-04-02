@@ -56,8 +56,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 @st.cache_resource
-def init_orchestrator_v3():
-    """初始化 Clawra 认知中枢 v3"""
+def init_orchestrator_v7():
+    """初始化 Clawra 认知中枢 v7 (Doubao Pro Model)"""
     reasoner = Reasoner()
     # 默认预装一些核心公理
     reasoner.facts.append(Fact("System", "status", "online", confidence=1.0))
@@ -72,10 +72,10 @@ def init_orchestrator_v3():
     episodic_mem = EpisodicMemory()
     return CognitiveOrchestrator(reasoner, semantic_mem, episodic_mem)
 
-# 强制重置 SessionState 缓存 (v3)
-if "orchestrator" not in st.session_state or getattr(st.session_state.orchestrator, '__class__').__name__ == "CognitiveOrchestrator":
-    # 强制重新实例化以加载最新的 _get_tools schema (绕过旧实例方法绑定的问题)
-    st.session_state.orchestrator = init_orchestrator_v3()
+# 强制重置 SessionState 缓存 (v7)
+if "orchestrator" not in st.session_state or "v7_loaded" not in st.session_state:
+    st.session_state.orchestrator = init_orchestrator_v7()
+    st.session_state.v7_loaded = True
 
 if "messages" not in st.session_state:
     st.session_state.messages = [
@@ -100,7 +100,7 @@ def save_persona(text):
 with st.sidebar:
     st.image("https://img.icons8.com/isometric/100/brain.png", width=80)
     st.title("Clawra Neural Hub")
-    st.caption("v3.5 Kinetic Edition")
+    st.caption("v4.0 SiliconFlow Patch")
     st.markdown("---")
 
     # [Gemini Optimization] 提示词自定义与持久化
@@ -117,31 +117,53 @@ with st.sidebar:
             st.toast("✅ 人格设定已保存", icon="💾")
 
     # 引擎实时指标
-    reasoner = st.session_state.orchestrator.reasoner
-    fact_count = len(reasoner.facts)
+    orchestrator = st.session_state.orchestrator
+    reasoner = orchestrator.reasoner
+    
+    # 区分 Session 内存与持久化图谱
+    session_facts = len(reasoner.facts)
+    graph_facts = orchestrator.semantic_memory.get_total_facts_count()
     
     m1, m2 = st.columns(2)
-    m1.metric("Reasoner Facts", fact_count)
-    m2.metric("ChromaDB", "Connected")
-
-    if st.session_state.orchestrator.semantic_memory.is_connected:
-        st.success("🟢 Neo4j: Active")
+    m1.metric("推理机实时事实", session_facts)
+    m2.metric("Neo4j 知识库事实", graph_facts)
+    
+    c1, c2 = st.columns(2)
+    if orchestrator.semantic_memory.is_connected:
+        c1.success("🟢 Neo4j: Active")
     else:
-        st.warning("🟡 Graph: Local")
+        c1.warning("🟡 Graph: Local")
+    c2.metric("ChromaDB", "Connected")
     
     st.markdown("---")
-    st.subheader("🕸️ 交互式本体图谱")
+    st.subheader("🕸️ 交互式本体图谱 (知识采样)")
+    st.caption("提示：图谱展示了 Neo4j 中的知识采样与当前推理机的活跃事实。")
     
     # 渲染图谱函数
-    def render_graph_html(height="400px"):
+    def render_graph_html(height="400px", use_sample=True):
         try:
             from pyvis.network import Network
             net = Network(height=height, width="100%", bgcolor="#0E1117", font_color="white", directed=True)
-            net.force_atlas_2based()
-            for fact in reasoner.facts:
-                net.add_node(fact.subject, label=fact.subject, color="#00D4FF", size=20)
-                net.add_node(fact.object, label=fact.object, color="#FF6B6B", size=15)
+            
+            # 关闭物理模拟的持续动画，仅用于初始布局
+            net.toggle_physics(False) 
+            
+            # 基础事实块
+            display_facts = list(reasoner.facts)
+            
+            # 如果 Session 事实太少，且 Neo4j 已连接，则拉取样本显示
+            if use_sample and len(display_facts) < 5 and orchestrator.semantic_memory.is_connected:
+                samples = orchestrator.semantic_memory.get_sample_triples(limit=30)
+                display_facts.extend(samples)
+            
+            for fact in display_facts:
+                node_color = "#FF6B6B" if fact.source == "neo4j_sample" else "#00D4FF"
+                size = 15 if fact.source == "neo4j_sample" else 20
+                
+                net.add_node(fact.subject, label=fact.subject, color=node_color, size=size)
+                net.add_node(fact.object, label=fact.object, color="#FFCC00", size=15)
                 net.add_edge(fact.subject, fact.object, label=fact.predicate, color="#FFFFFF", width=1)
+                
             path = "temp_graph.html"
             net.save_graph(path)
             with open(path, "r", encoding="utf-8") as f:
@@ -151,19 +173,15 @@ with st.sidebar:
         except Exception as e:
             return f"图谱渲染失败: {e}"
 
-    if fact_count > 0:
+    if session_facts > 0:
         import streamlit.components.v1 as components
         html = render_graph_html()
         components.html(html, height=450)
         
-        # [Gemini Optimization] 最大化图谱
-        @st.dialog("🌍 本地动力学图谱全景", width="large")
-        def show_large_graph():
+        # Use expander instead of dialog for compatibility with older Streamlit versions
+        with st.expander("🔍 查看大图", expanded=False):
             full_html = render_graph_html(height="800px")
             components.html(full_html, height=850)
-        
-        if st.button("🔍 最大化查看图谱", use_container_width=True):
-            show_large_graph()
     else:
         st.info("等待知识灌输...")
 
@@ -258,61 +276,47 @@ if prompt := st.chat_input("灌输知识或发起逻辑查询..."):
     with st.chat_message("assistant"):
         status = st.status("🚀 Clawra 正在激发神经突触...", expanded=True)
         try:
-            # 强化型线程隔离异步运行器 (彻底解决 uvloop 及 SessionState 线程访问冲突)
-            import threading
-            from concurrent.futures import ThreadPoolExecutor
-
-            def _run_in_new_loop(orch_instance, msgs, prompt):
-                new_loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(new_loop)
-                try:
-                    return new_loop.run_until_complete(
-                        orch_instance.execute_task(msgs, custom_prompt=prompt)
-                    )
-                finally:
-                    new_loop.close()
-
             start_time = time.time()
-            # 预聚合必要数据，避免在子线程中访问 st.session_state
             current_orch = st.session_state.orchestrator
             current_msgs = st.session_state.messages
             
-            with ThreadPoolExecutor(max_workers=1) as executor:
-                future = executor.submit(
-                    _run_in_new_loop, 
-                    current_orch,
+            # 使用同步包装异步的简洁方式
+            async def _run():
+                return await current_orch.execute_task(
                     current_msgs, 
-                    st.session_state.get("custom_system_prompt")
+                    custom_prompt=st.session_state.get("custom_system_prompt")
                 )
-                response = future.result()
             
-            latency = time.time() - start_time
-            
-            # 更新状态展示
-            trace_logs = response.get("trace", [])
-            for node in trace_logs:
-                status.write(f"✅ {node.get('tool')} ({node.get('latency', '0s')})")
-            
-            status.update(label=f"✨ 推理完成 (耗时 {latency:.2f}s)", state="complete", expanded=True)
-            
-            # 渲染推导轨迹中的每个节点到 status 块中，让其具有延续性
-            with status:
-                st.markdown("---")
+            try:
+                # 在有些环境下 Streamlit 已经有 loop 了，手动运行
+                import traceback
+                response = asyncio.run(_run())
+                
+                latency = time.time() - start_time
+                
+                # 更新状态展示
+                trace_logs = response.get("trace", [])
                 for node in trace_logs:
-                    render_trace_node(node)
-            
-            # 显示回复
-            st.markdown(response["message"])
-            
-            # 保存到 session
-            st.session_state.messages.append({
-                "role": "assistant",
-                "content": response["message"],
-                "trace": trace_logs
-            })
-            
-            # 移除了 st.rerun()，让当前这轮优美的动画和状态框永久驻留在本次运行中。
-
-        except Exception as e:
-            st.error(f"致命故障: {e}")
-            status.update(label="❌ 推理引擎熔断", state="error", expanded=True)
+                    status.write(f"✅ {node.get('tool')} ({node.get('latency', '0s')})")
+                
+                status.update(label=f"✨ 推理完成 (耗时 {latency:.2f}s)", state="complete", expanded=True)
+                
+                with status:
+                    st.markdown("---")
+                    for node in trace_logs:
+                        render_trace_node(node)
+                
+                st.markdown(response["message"])
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": response["message"],
+                    "trace": trace_logs
+                })
+            except Exception as e:
+                import traceback
+                st.error(f"致命故障: {e}")
+                st.code(traceback.format_exc())
+                status.update(label="❌ 推理引擎熔断", state="error", expanded=True)
+        except Exception as e_outer:
+            st.error(f"严重内核错误: {e_outer}")
+            status.update(label="❌ 系统熔断", state="error", expanded=True)

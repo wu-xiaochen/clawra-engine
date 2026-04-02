@@ -1,91 +1,85 @@
-# 🧠 Clawra: Kinetic Ontology-Driven Cognitive Engine
+# Clawra: 动力学本体认知引擎 (Agent Growth SDK)
 
-[![GitHub stars](https://img.shields.io/github/stars/wu-xiaochen/AbilityBuilder-Agent?style=for-the-badge)](https://github.com/wu-xiaochen/AbilityBuilder-Agent/stargazers)
-[![License](https://img.shields.io/github/license/wu-xiaochen/AbilityBuilder-Agent?style=for-the-badge)](https://github.com/wu-xiaochen/AbilityBuilder-Agent/blob/main/LICENSE)
-[![Python Version](https://img.shields.io/badge/python-3.10%2B-blue?style=for-the-badge&logo=python)](https://www.python.org/)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](blob/main/LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Neo4j](https://img.shields.io/badge/Neo4j-Active-green.svg)](https://neo4j.com/)
 
-**Clawra** is a production-grade, neuro-symbolic framework for autonomous agents inspired by **Palantir Foundry’s Ontology**. It transforms static knowledge into a **Kinetic Decision-Making System** through formal RDF/OWL logic, high-fidelity GraphRAG, and verifiable reasoning traces.
-
----
-
-## 🏗️ Architecture: From Description to Action
-
-Clawra separates the world into three distinct layers, ensuring that LLM reasoning is grounded in verifiable organizational logic:
-1.  **Object/Link Layer**: Entities and their relationships (The "What").
-2.  **Logic Layer (Reasoning)**: Formal OWL rules and forward-chaining inference (The "Why").
-3.  **Action Layer (Kinetic)**: Operational verbs that perform validations and drive decisions (The "How").
-
-```mermaid
-graph TD
-    User((User)) --> Perception[Knowledge Extraction: Ontology-Guided]
-    Perception --> Memory[(Multi-tier Memory: Neo4j + Chroma)]
-    Memory --> Orchestrator{Cognitive Orchestrator}
-    Orchestrator --> Trace[Logic Trace: 2-Hop GraphRAG]
-    Trace --> Reasoner[Forward Chaining Reasoner]
-    Reasoner --> Action[Action Layer: Validation & Execution]
-    Action --> User
-```
-
-# 🧠 Clawra 神经符号人工智能平台 (Neuro-Symbolic Cognitive Engine)
-
-## 📌 项目定位
-
-**Clawra Cognitive Engine** 现已正式跨越“知识检索”的古典 RAG 时代，进化成为基于 **神经符号计算 (Neuro-Symbolic V-RAG)** 与 **粒度理论 (Grain Theory)** 的企业级推理中枢平台。
-
-它是为真正的商业智能体 (Business Agents) 打造的“大脑底座”：
-1. 它不再迷信大模型的计算能力，而是将大模型作为**语言解析中枢**。
-2. 核心数学和业务边界由本地的 **RuleEngine 沙盒** 与 **Ontology 本体图数据库** 执掌。
-3. 具备自主学习与遗忘代谢机制：过时的隐性知识会被 `MemoryGovernor` 自动剪枝降权。
-
-## ✨ 企业级核心架构特征 (v3.5 Kinetic Edition)
-
-### 1. 深度治理的图向量混合记忆 (Hybrid Governed Memory)
-- **Semantic Layer**: 基于 `ChromaDB` (长文本向量引擎) + `Neo4j` (动态关系图谱) 实现双重语义召回。
-- **Governance Layer**: 引入时间片遗忘与置信度衰减算法 (`governance.py`)。大模型如果引用了某种错误或冲突经验，导致规则回滚，该知识的三元组权重会直接扣减，当 Confidence < 0.20 时自动发生**神经元突触剪枝 (Synaptic Pruning)**。
-
-### 2. 绝对免疫“人工智能数学幻觉” (Rule-Gated Math Sandbox)
-完全剥夺大模型的算术能力！我们在 `src/core/ontology/rule_engine.py` 中实现了纯净的 AST 解析沙盒环境。当遇到如“所需资金不得超过预算115%”或“安全供气余量必须>70%”时，大模型只负责将所需变量抽出丢入引擎，最终真假由沙盒判定输出（完全规避 GPT 做错大小对比/幻觉的灾难）。
-
-### 3. 三位一体的动力学闭环 (Tri-Layer Action Linkage)
-系统脱离了被动检索，升级为**“能动执行”**。
-- `Action Registry` 将纯后端的 API 物理动作与 Graph 实体强绑定。
-- 在 Action 被执行前，触发 **Pre-Condition Rule Gating (规则门控)**。本体引擎会自动拉取挂载在该实体上的所有 Rule 进行数学审计。违规者立即生成高能警戒级 **审计拦截 (BLOCKED)** 历史记录，斩断失控风险。
-
-### 4. 高保真白盒化推理追踪 (High-Fidelity Transparent Tracing)
-所有黑盒运作（如 LLM 本身的思考过程 Chain-Of-Thought、沙盒执行参数、粒度审计、图谱展开路径）全量记录。不仅向开发者输出详细的 JSON Schema Trace Payload，并通过 Demo 进行可视化呈现，企业客户可以完美审查每一步机器行动的逻辑和依据。
+**Clawra** 是一款专为工业与复杂业务场景设计的**神经符号 (Neuro-Symbolic) 认知代理框架**。它突破了传统 LLM 仅依赖概率预测的局限，通过**本体约束 (Ontology Constraints)**、**确定性规则引擎 (Rule Engine)** 以及 **GraphRAG (图增强检索)**，实现了具备逻辑自洽性、零幻觉特征的智能体生长系统。
 
 ---
 
-## 🚀 Quick Start
+## 核心特性
 
-### 1. Prerequisites
-- Python 3.10+
-- OpenAI API Key
-- Neo4j (Optional, defaults to in-memory mode if not found)
+- 🧠 **神经符号架构**: 结合了大模型的语义理解力与符号逻辑的严谨性。
+- 🕸️ **动力学本体**: 建立在 Neo4j 之上的 10,000+ 工业事实底座，支持实时知识抽取与关联推理。
+- 🛡️ **规则引擎 (RuleEngine)**: 内置 AST 级数学沙盒，强制校验由于模型幻觉引发的参数偏差（如压力、流量级别）。
+- 🔍 **GraphRAG**: 深度整合向量库 (ChromaDB) 与图数据库 (Neo4j)，提供基于关联路径的长短期记忆。
+- 🤖 **认知中枢 (Orchestrator)**: 具备自省与审计能力的编排引擎，支持对决策链的全程追溯。
 
-### 2. Setup
+---
+
+## 快速开始
+
+### 1. 环境准备
+确保您的环境中已安装 Python 3.10+ 及 Neo4j。
+
 ```bash
-git clone https://github.com/wu-xiaochen/AbilityBuilder-Agent.git
-cd AbilityBuilder-Agent
+git clone https://github.com/wu-xiaochen/ontology-platform.git
+cd ontology-platform
 pip install -r requirements.txt
 ```
 
-### 3. Launch the Professional Console
+### 2. 配置文件
+在项目根目录创建 `.env` 文件，配置您的 API 密钥与数据库：
+
+```env
+OPENAI_API_KEY=your_volcengine_ark_key
+OPENAI_BASE_URL=https://ark.cn-beijing.volces.com/api/v3
+OPENAI_MODEL=doubao-seed-2-0-pro-260215
+
+# Neo4j 配置
+NEO4J_URI=bolt://localhost:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=your_password
+```
+
+### 3. 启动演示端
+Clawra 提供了一个全功能的 Streamlit 控制台，用于可视化推理过程。
+
 ```bash
 streamlit run examples/streamlit_app.py
 ```
 
 ---
 
-## 🛠️ Project Structure
+## 项目架构
 
--   `src/`: **Framework Core**. Decoupled modules for Reasoner, Memory, Perception, and Evolution.
--   `examples/`: **Production Interface**. The high-fidelity Streamlit console.
--   `docs/`: **Knowledge Base**. Architecture deep-dives and conceptual guides.
--   `tests/`: **Rigorous Validation**. Comprehensive test suite (15+ core integration tests).
+项目采用模块化分层设计，确保各组件的高内聚低耦合：
+
+- `src/agents`: 认知编排器，负责 LLM 规划与工具决策。
+- `src/core`: 核心逻辑层，包含 `Reasoner` (推理机) 与 `RuleEngine` (规则引擎)。
+- `src/memory`: 存储层，封装了 Neo4j 三元组操作与 ChromaDB 向量检索。
+- `src/perception`: 感知层，负责从非结构化文档中提取结构化知识。
+- `docs/`: 详细的架构方案与 API 参考手册。
 
 ---
 
-## 📄 License
+## 开发规范
 
-Clawra is licensed under the MIT License. Built with ❤️ for the future of **Autonomous Cognitive Intelligence**.
+为了保持认知引擎的严谨性，开发者应遵循以下准则：
+1. **语义自足**: 所有提取出的事实必须符合本体语义，优先使用 `src/core/ontology` 中定义的公理。
+2. **审计优先**: 任何关键决策必须记录 Trace 链路，供 `AdutiingEngine` 实时回溯。
+3. **零幻觉原则**: 涉及数值计算时，必须通过 `RuleEngine` 过滤，禁止让 LLM 直接输出计算结果。
+
+---
+
+## 路线图 (Roadmap)
+- [x] 迁移至火山引擎 Ark (Doubao Pro)。
+- [x] 实现 10,000+ 工业事实的 GraphRAG 闭环。
+- [ ] 支持多模态本体抽取。
+- [ ] 引入联邦式本体协作。
+
+---
+
+## 许可证
+本项目采用 Apache 2.0 许可证。

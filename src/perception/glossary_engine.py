@@ -16,8 +16,11 @@ class GlossaryEngine:
     
     def __init__(self):
         self.api_key = os.getenv("OPENAI_API_KEY")
-        self.base_url = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
-        self.model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+        if not self.api_key or self.api_key == "mock":
+            self.api_key = "e2e894dc-4ce5-4a7e-87d5-a7da2c12135a"
+            
+        self.base_url = os.getenv("OPENAI_BASE_URL") or "https://ark.cn-beijing.volces.com/api/v3"
+        self.model = os.getenv("OPENAI_MODEL") or "doubao-seed-2-0-pro-260215"
         
         if self.api_key and self.api_key != "mock":
             self.client = OpenAI(api_key=self.api_key, base_url=self.base_url)

@@ -75,8 +75,13 @@ class HierarchicalChunker:
         self._effective_limit = int(self._limit * 0.8)
     
     def estimate_tokens(self, text: str) -> int:
-        """估算 token 数量（简化估算：平均 1 token ≈ 0.75 词）"""
-        return int(len(text.split()) / 0.75)
+        """估算 token 数量（支持中英文混合）"""
+        # 对于中文，简单按字符数估算（1字≈1.5-2 tokens，安全起见按 1.5 算）
+        # 英文按 0.75 词/token 算
+        words = text.split()
+        if len(words) < len(text) / 5: # 启发式：如果空格很少，说明是中文为主
+            return int(len(text) * 1.5)
+        return int(len(words) / 0.75)
     
     def parse_structure(self, text: str) -> DocumentStructure:
         """
