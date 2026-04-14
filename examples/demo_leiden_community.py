@@ -119,7 +119,7 @@ def main():
     print(f"  ✓ 检测到 {len(communities)} 个社区:")
     for i, comm in enumerate(communities[:10]):
         entity_preview = list(comm.entities)[:5]
-        print(f"    社区 {comm.id}: {entity_preview}... (size={comm.size})")
+        print(f"    社区 {comm.community_id}: {entity_preview}... (size={comm.size})")
 
     # ── Step 5: 其他算法对比 ───────────────────────────────────────
     print("\n[Step 5] 其他算法对比...")
@@ -136,8 +136,8 @@ def main():
     print("\n[Step 6] 生成社区摘要...")
     summaries = kg.generate_community_summaries()
     print(f"  ✓ 生成了 {len(summaries)} 个社区摘要:")
-    for comm_id, summary in list(summaries.items())[:5]:
-        print(f"    社区 {comm_id}: {summary[:80]}...")
+    for comm in summaries[:5]:
+        print(f"    社区 {comm.community_id}: {comm.summary[:80] if comm.summary else '(无摘要)'}...")
 
     # ── Step 7: 跨社区推理 ─────────────────────────────────────────
     print("\n[Step 7] 跨社区推理...")
@@ -167,23 +167,23 @@ def main():
     print("\n[Step 8] 查询实体社区归属...")
     entities_to_check = ["调压箱", "调压器", "住宅小区", "高压燃气", "维护周期"]
     for entity in entities_to_check:
-        comm_id = kg.get_entity_community(entity)
-        print(f"  ✓ {entity} -> 社区 {comm_id}")
+        comm = kg.get_community(entity)
+        print(f"  ✓ {entity} -> 社区 {comm.community_id if comm else '无'}")
 
     # ── Step 9: 获取社区成员 ──────────────────────────────────────
     print("\n[Step 9] 获取社区成员...")
     if communities:
         first_comm = communities[0]
-        members = kg.get_community_members(first_comm.id)
-        print(f"  ✓ 社区 {first_comm.id} 的成员 ({len(members)} 个):")
-        for m in members[:10]:
+        members = kg.get_community_entities(first_comm.community_id)
+        print(f"  ✓ 社区 {first_comm.community_id} 的成员 ({len(members)} 个):")
+        for m in list(members)[:10]:
             print(f"    - {m}")
 
     # ── Step 10: 社区级别检索 ─────────────────────────────────────
     print("\n[Step 10] 社区级别知识检索...")
     # 获取社区内所有三元组
     if communities:
-        comm_id = communities[0].id
+        comm_id = communities[0].community_id
         triples_in_comm = kg.get_community_triples(comm_id)
         print(f"  ✓ 社区 {comm_id} 内有 {len(triples_in_comm)} 条三元组:")
         for t in triples_in_comm[:5]:

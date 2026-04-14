@@ -2285,9 +2285,9 @@ class KnowledgeGraph:
 
         # BFS 查找所有短路径
         try:
-            for path in nx.all_shortest_paths(
-                self._nx_graph, entity_a, entity_b, cutoff=max_hops
-            ):
+            for path in list(nx.shortest_simple_paths(
+                self._nx_graph, entity_a, entity_b
+            ))[:max_hops]:
                 if len(path) < 2:
                     continue
 
