@@ -79,7 +79,7 @@ def main():
     )
     success = logic_layer.add_pattern(pattern_v2)
     print(f"  ✓ 更新 Pattern: {'成功' if success else '失败'}")
-    print(f"    当前版本: {logic_layer.get_pattern_version('gas_pressure_rule_v1')}")
+    print(f"    当前版本: {logic_layer.get_current_version('gas_pressure_rule_v1')}")
 
     # ── Step 4: 添加更多 Pattern ─────────────────────────────────
     print("\n[Step 4] 添加更多 Pattern...")
@@ -155,30 +155,28 @@ def main():
     print("\n[Step 7] 回滚到 v1...")
     rollback_ok = logic_layer.rollback_pattern("gas_pressure_rule_v1", target_version=1)
     print(f"  ✓ 回滚: {'成功' if rollback_ok else '失败'}")
-    current_version = logic_layer.get_pattern_version("gas_pressure_rule_v1")
+    current_version = logic_layer.get_current_version("gas_pressure_rule_v1")
     print(f"    当前版本: {current_version}")
     current_pattern = logic_layer.patterns.get("gas_pressure_rule_v1")
     if current_pattern:
         print(f"    当前描述: {current_pattern.description}")
 
-    # ── Step 8: 检测冗余 Pattern ─────────────────────────────────
-    print("\n[Step 8] 检测冗余 Pattern...")
-    redundant = logic_layer.find_redundant_patterns()
-    print(f"  ✓ 发现 {len(redundant)} 对冗余 Pattern:")
-    for pair in redundant[:5]:
-        print(f"    - {pair[0]} <-> {pair[1]}")
+    # Step 8: 检测冗余 Pattern（暂无 find_redundant_patterns 方法，跳过）
+    # redundant = logic_layer.find_redundant_patterns()
+    # print(f"  ✓ 发现 {len(redundant)} 对冗余 Pattern:")
 
     # ── Step 9: 合并相似 Pattern ──────────────────────────────────
     print("\n[Step 9] 合并相似 Pattern (dry-run)...")
-    merge_candidates = logic_layer.merge_similar_patterns(
+    result = logic_layer.merge_similar_patterns(
         threshold=0.8,
         dry_run=True
     )
-    print(f"  ✓ 建议合并 {len(merge_candidates)} 对 Pattern:")
-    for candidate in merge_candidates[:5]:
-        print(f"    - Pattern A: {candidate.get('pattern_a_id')}")
-        print(f"      Pattern B: {candidate.get('pattern_b_id')}")
-        print(f"      相似度: {candidate.get('similarity', 0):.3f}")
+    merge_plan = result.get("merge_plan", [])
+    print(f"  ✓ 建议合并 {len(merge_plan)} 对 Pattern:")
+    for item in merge_plan[:5]:
+        print(f"    - Pattern A: {item.get('keep_id')}")
+        print(f"      Pattern B: {item.get('remove_id')}")
+        print(f"      相似度: {item.get('similarity', 0):.3f}")
 
     # ── Step 10: 查看所有 Pattern ─────────────────────────────────
     print("\n[Step 10] 查看所有 Pattern...")

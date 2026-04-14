@@ -7,6 +7,7 @@ clawra Demo: Autonomous Supplier Monitor
 """
 
 import sys
+import os
 # 修复导入路径：将项目根目录加入 sys.path，使用 src. 前缀导入
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 

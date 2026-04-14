@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+
+#!/usr/bin/env python3
 """
 Clawra SDK Example 03 — 技能库 + 规则引擎
 展示如何注册自定义技能和业务规则

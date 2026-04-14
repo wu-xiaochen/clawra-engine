@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+
+#!/usr/bin/env python3
 """
 Clawra SDK Example 04 — 构建 Agent Chatbot
 展示如何用 Clawra 构建一个燃气安全知识问答 Agent

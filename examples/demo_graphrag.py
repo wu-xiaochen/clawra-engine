@@ -98,7 +98,6 @@ def main():
 
     local_results = retriever.local_search(
         query="调压箱A 的配置",
-        center_entity="调压箱A",
         top_k=8
     )
     print(f"  ✓ 局部搜索找到 {len(local_results.results)} 条结果:")

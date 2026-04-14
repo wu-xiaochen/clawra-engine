@@ -7,6 +7,10 @@ Clawra Cognitive Framework (神经符号智能引擎) 完整演示程序
 3. 规则前向校验 (Rule Engine Enforcement): 依据硬性规则进行物理拦截，无需依赖概率模型
 """
 import logging
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
 from src.clawra import Clawra
 from src.core.ontology.rule_engine import RuleEngine, OntologyRule, SafeMathSandbox
 

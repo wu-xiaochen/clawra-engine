@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+
+#!/usr/bin/env python3
 """
 Clawra SDK Example 02 — GraphRAG 检索
 展示如何构建知识索引并执行混合检索
