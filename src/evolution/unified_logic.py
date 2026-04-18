@@ -44,13 +44,17 @@ class LogicPattern:
     logic_type: LogicType
     name: str
     description: str
-    
+
     # 条件部分（前提）
     conditions: List[Dict[str, Any]]  # [{"subject": "?X", "predicate": "is_a", "object": "device"}]
-    
+
     # 动作部分（结论/行为）
     actions: List[Dict[str, Any]]     # [{"type": "infer", "subject": "?X", "predicate": "requires", "object": "maintenance"}]
-    
+
+    # [P1 Defect #3 Fix] 执行上下文：此规则绑定到的对象类型
+    # 对标 Palantir Ontology ActionType.object_type，确保 Action 在正确的上下文中执行
+    object_type: str = "Generic"      # ObjectType 枚举值，默认 Generic 表示无约束
+
     # 元信息
     confidence: float = 0.8
     source: str = "learned"  # learned, manual, inferred
@@ -70,6 +74,7 @@ class LogicPattern:
             "description": self.description,
             "conditions": self.conditions,
             "actions": self.actions,
+            "object_type": self.object_type,
             "confidence": self.confidence,
             "source": self.source,
             "domain": self.domain,
@@ -78,7 +83,7 @@ class LogicPattern:
             "success_count": self.success_count,
             "failure_count": self.failure_count
         }
-    
+
     @classmethod
     def from_dict(cls, data: Dict) -> 'LogicPattern':
         return cls(
@@ -88,6 +93,7 @@ class LogicPattern:
             description=data["description"],
             conditions=data["conditions"],
             actions=data["actions"],
+            object_type=data.get("object_type", "Generic"),
             confidence=data.get("confidence", 0.8),
             source=data.get("source", "learned"),
             domain=data.get("domain", "generic"),

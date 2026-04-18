@@ -1,7 +1,7 @@
 """
 Action Runtime — 轻量级动作执行引擎 (Kinetic Layer)
 
-v2.0 核心模块，让 LogicPattern 真正可执行。
+v3.0 核心模块，让 LogicPattern 真正可执行。
 参考 Palantir Kinetic Ontology — 从"描述型知识"升级为"可执行型知识"。
 
 支持的动作类型:
@@ -9,7 +9,7 @@ v2.0 核心模块，让 LogicPattern 真正可执行。
 - notify   : 触发通知/回调
 - validate : 校验数据约束
 - transform: 数据格式转换
-- execute  : 调用注册的 Python 函数 (沙箱)
+- execute  : 执行 Skill (优先) 或注册的 Python 函数 (兼容)
 
 事件驱动:
 - 新三元组写入图时，自动匹配 condition → 触发规则链
@@ -87,13 +87,15 @@ class ActionRuntime:
     def MAX_EXEC_TIME(self) -> float:
         return get_config().action_runtime.max_exec_time
 
-    def __init__(self, graph: KnowledgeGraph, logic_layer=None):
+    def __init__(self, graph: KnowledgeGraph, logic_layer=None, skill_registry=None):
         # 绑定知识图谱引擎 — 所有 infer 动作写入此图
         self._graph = graph
         # 绑定逻辑层 — 规则定义来源，可为 None (仅执行单个动作)
         self._logic_layer = logic_layer
+        # 绑定 Skill 注册表 — 优先使用 Skill 执行
+        self._skill_registry = skill_registry
 
-        # 注册的可执行函数: name → callable (沙箱执行时查表)
+        # 注册的可执行函数: name → callable (沙箱执行时查表，兼容旧版)
         self._registered_functions: Dict[str, Callable] = {}
 
         # 通知回调: event_type → list of callbacks (notify 动作分发)
@@ -243,7 +245,26 @@ class ActionRuntime:
             return record
 
         pattern = self._logic_layer.patterns[rule_id]
-        
+
+        # [P1 Defect #3 Fix] 执行前 ObjectType 验证
+        # 校验执行上下文是否合法，防止越权操作
+        ot_validation = self._validate_object_type(pattern, bindings)
+        if not ot_validation["valid"]:
+            record = ExecutionRecord(
+                rule_id=rule_id,
+                trigger=trigger,
+                bindings=dict(bindings) if bindings else {},
+                chain_depth=chain_depth,
+            )
+            record.results.append(ActionResult(
+                action_type="object_type_validation",
+                success=False,
+                error=f"ObjectType 验证失败: {ot_validation['reason']}"
+            ))
+            record.success = False
+            self._execution_history.append(record)
+            return record
+
         # 防御性编程：检查 pattern.actions 是否为 None 或空列表
         if not pattern.actions:
             record.results.append(ActionResult(
@@ -266,12 +287,23 @@ class ActionRuntime:
                 continue
             result = self.execute_action(action, bindings)
             record.results.append(result)
+
+            # [Defect #5 Fix] execute 类 action 立即反馈置信度，不等整条规则结束
+            # skill 执行结果不应该被同一规则内其他 action 的成败影响
+            if action.get("type") == "execute" and hasattr(pattern, "update_success_rate"):
+                pattern.update_success_rate(result.success)
+
             if not result.success:
                 all_success = False
+                # [Defect #4 Fix] critical=true 的 action 失败时立即停止
+                if action.get("critical", False):
+                    logger.warning(f"关键动作失败，停止执行: {action}")
+                    break
 
         record.success = all_success
 
-        # 更新 pattern 的成功率统计，检查方法是否存在（防御性编程）
+        # 注：对于非 execute 类型的 action，继续用聚合结果更新统计
+        # execute 类型已在上面单独反馈，避免被其他 action 污染
         if hasattr(pattern, 'update_success_rate'):
             pattern.update_success_rate(all_success)
 
@@ -382,12 +414,27 @@ class ActionRuntime:
             )
 
     def _execute_function(self, action: Dict, bindings: Dict) -> ActionResult:
-        """调用注册的 Python 函数 (沙箱)"""
+        """
+        执行 Skill (优先) 或注册的 Python 函数 (兼容)
+        
+        优先路径: action["skill"] → UnifiedSkillRegistry.execute_skill()
+        兼容路径: action["function"] → self._registered_functions[name]()
+        
+        Args:
+            action: 动作定义 {"skill": "skill_id"} 或 {"function": "func_name"}
+            bindings: 变量绑定 {"?X": "value"}
+        """
+        # 优先使用 SkillRegistry
+        skill_id = action.get("skill", "")
+        if skill_id and self._skill_registry:
+            return self._execute_skill(skill_id, action.get("args", {}), bindings)
+        
+        # 兼容路径：调用注册的 Python 函数
         func_name = action.get("function", "")
         if func_name not in self._registered_functions:
             return ActionResult(
                 action_type="execute", success=False,
-                error=f"未注册的函数: {func_name}"
+                error=f"未找到 Skill '{skill_id}' 或函数 '{func_name}'"
             )
 
         func = self._registered_functions[func_name]
@@ -398,6 +445,39 @@ class ActionRuntime:
             output = func(**args)
             return ActionResult(
                 action_type="execute", success=True, output=output
+            )
+        except Exception as e:
+            return ActionResult(
+                action_type="execute", success=False, error=str(e)
+            )
+
+    def _execute_skill(self, skill_id: str, args: Dict, bindings: Dict) -> ActionResult:
+        """
+        通过 UnifiedSkillRegistry 执行 Skill
+        
+        支持变量绑定替换: args 中的 "?X" 会被替换为 bindings["?X"] 的值
+        """
+        if not self._skill_registry:
+            return ActionResult(
+                action_type="execute", success=False,
+                error="SkillRegistry 未初始化"
+            )
+        
+        # 变量绑定替换
+        resolved_args = {}
+        for k, v in args.items():
+            if isinstance(v, str) and v.startswith("?"):
+                resolved_args[k] = bindings.get(v, v)  # 未找到则保留原变量
+            else:
+                resolved_args[k] = v
+        
+        try:
+            skill_result = self._skill_registry.execute_skill(skill_id, resolved_args)
+            return ActionResult(
+                action_type="execute",
+                success=skill_result.get("success", False),
+                output=skill_result.get("result"),
+                error=skill_result.get("error")
             )
         except Exception as e:
             return ActionResult(
@@ -461,9 +541,12 @@ class ActionRuntime:
 
     def _match_rules_for_triple(self, triple: TypedTriple) -> List[RuleMatch]:
         """
-        给定一个新三元组, 找出所有 conditions 被满足的规则
+        给定一个新三元组，找出所有 conditions 被满足的规则/行为/约束。
 
-        简化版匹配: 检查规则的每个 condition 是否能在图中找到匹配
+        匹配所有可触发型 LogicType：RULE, BEHAVIOR, CONSTRAINT。
+        CONSTRAINT 有特殊逻辑：空 conditions 意味着"总是检查"，需验证约束。
+
+        简化版匹配：检查规则的每个 condition 是否能在图中找到匹配
         """
         if self._logic_layer is None:
             return []
@@ -471,8 +554,9 @@ class ActionRuntime:
         matches: List[RuleMatch] = []
 
         for rule_id, pattern in self._logic_layer.patterns.items():
-            # 跳过非规则类型
-            if pattern.logic_type.value != "rule":
+            # 可触发型 LogicType：RULE / BEHAVIOR / CONSTRAINT / POLICY / WORKFLOW
+            # 注意：CONSTRAINT 的 conditions 为空时表示"总是触发"（需验证）
+            if pattern.logic_type.value not in ("rule", "behavior", "constraint", "policy", "workflow"):
                 continue
 
             # 尝试匹配
@@ -912,6 +996,81 @@ class ToolRegistry:
         self._category_index.clear()
         self._tag_index.clear()
         logger.info("ToolRegistry 已清空")
+
+    def _validate_object_type(
+        self, pattern: "LogicPattern", bindings: Dict[str, str]
+    ) -> Dict[str, Any]:
+        """
+        [P1 Defect #3 Fix] Action 执行前 ObjectType 验证。
+
+        Palantir Ontology 中每个 Action 绑定到特定 ObjectType（如 Regulator），
+        执行前需确认主体实体属于该类型。
+
+        验证逻辑：
+        1. Generic 类型：无约束，直接放行
+        2. 具体类型：从 bindings 中提取主体，查询 KnowledgeGraph 验证其类型标签
+
+        对标 Palantir：ActionType 执行前的 object_type 校验 + 结果写回到 Ontology
+
+        Returns:
+            {"valid": bool, "reason": str, "subject": str, "actual_type": str}
+        """
+        object_type = getattr(pattern, "object_type", "Generic")
+        if object_type == "Generic":
+            return {"valid": True, "reason": "Generic 类型无约束", "subject": None, "actual_type": None}
+
+        # 从 bindings 中提取主体（通常是 ?subject 或 ?X）
+        # 优先用 "subject"，其次用 bindings 中的第一个变量值
+        subject = bindings.get("subject") or bindings.get("?subject")
+        if not subject:
+            # 从 conditions 的第一个 condition 中提取 subject
+            if pattern.conditions:
+                first_cond = pattern.conditions[0]
+                var = first_cond.get("subject", "")
+                if var.startswith("?"):
+                    subject = bindings.get(var)
+        if not subject:
+            return {
+                "valid": True,  # 降级：无法确定主体，放行（避免误拦截）
+                "reason": f"无法从 bindings 提取主体，跳过 ObjectType 验证（类型={object_type}）",
+                "subject": None, "actual_type": None
+            }
+
+        # 查询 KnowledgeGraph，验证主体的实际类型
+        try:
+            if self._graph is not None:
+                # 查询主体节点的类型标签
+                # 使用 SPO 索引查找 subject 对应的 type triple
+                results = self._graph.query(subject=subject)
+                if results:
+                    # 取第一条结果的类型
+                    for r in results:
+                        pred = r.get("predicate", "")
+                        obj = r.get("object", "")
+                        if pred in ("rdf:type", "is_a", "type", "instance_of"):
+                            actual_type = obj
+                            if actual_type == object_type or object_type == "Generic":
+                                return {
+                                    "valid": True,
+                                    "reason": f"主体 {subject} 类型匹配（{actual_type} == {object_type}）",
+                                    "subject": subject, "actual_type": actual_type
+                                }
+                            else:
+                                return {
+                                    "valid": False,
+                                    "reason": f"类型不匹配：主体 {subject} 类型为 {actual_type}，规则要求 {object_type}",
+                                    "subject": subject, "actual_type": actual_type
+                                }
+        except Exception as e:
+            logger.warning(f"ObjectType 验证查询异常: {e}，放行（降级）")
+            return {"valid": True, "reason": f"验证异常: {e}，降级放行", "subject": subject, "actual_type": None}
+
+        # 无法确定类型，降级放行
+        return {
+            "valid": True,
+            "reason": f"主体 {subject} 在图中无类型信息，跳过验证（降级）",
+            "subject": subject, "actual_type": None
+        }
 
     def get_statistics(self) -> Dict[str, Any]:
         """

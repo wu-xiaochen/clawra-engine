@@ -41,6 +41,28 @@ class NodeLabel(Enum):
     PROPERTY = "Property"
 
 
+class ObjectType(Enum):
+    """
+    [P1 Defect #3 Fix] 对象类型枚举，对标 Palantir Ontology ObjectType。
+
+    Palantir 的 Action 绑定在 ObjectType 上（如 Regulator、Order），
+    Clawra 此前缺少这一层抽象，Action 执行前无对象级安全校验。
+
+    ObjectType 提供了执行上下文的类型安全约束：
+    - 执行前：验证主体是否属于允许的 ObjectType
+    - 执行后：将结果写回到 Ontology 的对象层
+    """
+    REGULATOR = "Regulator"          # 调压设备
+    SENSOR = "Sensor"                # 传感器
+    ORDER = "Order"                  # 工单/订单
+    ASSET = "Asset"                  # 资产
+    USER = "User"                    # 用户
+    AGENT = "Agent"                  # Agent 实体
+    SKILL = "Skill"                  # 技能
+    PATTERN = "Pattern"              # 逻辑模式
+    GENERIC = "Generic"              # 通用（无类型约束）
+
+
 class RelationshipType(Enum):
     """关系类型"""
     HAS_PROPERTY = "HAS_PROPERTY"

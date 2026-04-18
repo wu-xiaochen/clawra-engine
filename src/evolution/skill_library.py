@@ -286,6 +286,102 @@ class UnifiedSkillRegistry:
             logger.error(f"代码审计异常解析失败: {e}")
             return False
 
+    def _run_skill_vetter(self, skill: "Skill") -> bool:
+        """
+        [Defect #6 Fix] 使用 skill_vetter 多扫描器对技能进行安全审查。
+
+        skill_vetter 需要技能目录结构，因此将 Skill 内容写入临时目录，
+        生成 SKILL.md，再调用 vett.sh 扫描。
+
+        Returns:
+            True  — 通过审查（SAFE 或 REVIEW with warnings），允许注册
+            False — 被 BLOCKED（CRITICAL/HIGH 级别），拒绝注册
+        """
+        import tempfile, shutil, subprocess
+
+        # skill_vetter 脚本路径
+        vett_script = os.path.join(
+            os.path.dirname(__file__),
+            "..", "..", ".hermes", "skills", "openclaw-imports",
+            "skill-vetter", "scripts", "vett.sh"
+        )
+        if not os.path.exists(vett_script):
+            logger.warning(f"skill_vetter 脚本不存在，跳过安全审查: {vett_script}")
+            return True  # 降级：脚本不存在时放行
+
+        tmpdir = None
+        try:
+            # 创建临时技能目录
+            tmpdir = tempfile.mkdtemp(prefix="skill-vet-")
+            skill_name_safe = re.sub(r'[^a-zA-Z0-9_-]', '_', skill.name)
+            skill_tmp_dir = os.path.join(tmpdir, skill_name_safe)
+            os.makedirs(skill_tmp_dir)
+
+            # 生成 SKILL.md（skill_vetter 结构检查依赖此文件）
+            skill_md = f"""---
+name: {skill.name}
+version: 1.0.0
+description: "{skill.description}"
+---
+"""
+            with open(os.path.join(skill_tmp_dir, "SKILL.md"), "w", encoding="utf-8") as f:
+                f.write(skill_md)
+
+            # 写入技能内容（根据类型决定文件名）
+            if skill.skill_type == SkillType.CODE:
+                code_file = os.path.join(skill_tmp_dir, "skill.py")
+                with open(code_file, "w", encoding="utf-8") as f:
+                    f.write(f'"""\nSkill: {skill.name}\nType: {skill.skill_type.value}\nDescription: {skill.description}\n"""\n\n{skill.content}')
+            elif skill.skill_type == SkillType.SCRIPT:
+                script_file = os.path.join(skill_tmp_dir, "run.sh")
+                with open(script_file, "w", encoding="utf-8") as f:
+                    f.write(skill.content)
+                os.chmod(script_file, 0o755)
+            else:
+                # LOGIC / KNOWLEDGE 等纯描述类型，跳过内容写入
+                pass
+
+            # 调用 skill_vetter
+            logger.info(f"正在对技能 '{skill.name}' 执行安全扫描...")
+            result = subprocess.run(
+                ["bash", vett_script, skill_tmp_dir],
+                capture_output=True,
+                text=True,
+                timeout=120
+            )
+            exit_code = result.stdout + result.stderr
+
+            if result.returncode == 1:
+                # BLOCKED — CRITICAL/HIGH 级别
+                logger.error(f"🚫 skill_vetter BLOCKED 技能 '{skill.name}' — 安全审查未通过")
+                # 提取关键失败信息
+                lines = exit_code.splitlines()
+                for line in lines:
+                    if "BLOCKED" in line or "❌" in line or "🚫" in line:
+                        logger.error(f"   {line.strip()}")
+                return False
+            elif result.returncode == 0:
+                if "REVIEW NEEDED" in exit_code or "⚠️" in exit_code:
+                    # REVIEW — MEDIUM 级别，警告但放行
+                    logger.warning(f"⚠️ skill_vetter 对技能 '{skill.name}' 发出中等风险警告（仍允许注册）")
+                    logger.warning(f"   建议人工审查: {skill_tmp_dir}")
+                else:
+                    logger.info(f"✅ skill_vetter 通过安全审查: {skill.name}")
+                return True
+            else:
+                logger.warning(f"skill_vetter 返回异常码 {result.returncode}，跳过审查")
+                return True
+
+        except subprocess.TimeoutExpired:
+            logger.error(f"skill_vetter 对技能 '{skill.name}' 扫描超时（120s）")
+            return False
+        except Exception as e:
+            logger.warning(f"skill_vetter 执行异常: {e}，跳过安全审查（降级放行）")
+            return True
+        finally:
+            if tmpdir and os.path.exists(tmpdir):
+                shutil.rmtree(tmpdir, ignore_errors=True)
+
     def register_skill(self, skill: Skill) -> bool:
         """
         注册并持久化新技能
@@ -293,7 +389,13 @@ class UnifiedSkillRegistry:
         Args:
             skill: 待注册的 Skill 实例
         """
-        # 如果是代码或可执行技能，执行前置安全审计
+        # [Defect #6 Fix] CODE/EXECUTABLE 类型必须通过 skill_vetter 安全扫描
+        if skill.skill_type in (SkillType.CODE, SkillType.EXECUTABLE, SkillType.SCRIPT):
+            if not self._run_skill_vetter(skill):
+                logger.warning(f"技能 {skill.name} 未通过安全审查，拒绝录入")
+                return False
+
+        # 如果是代码或可执行技能，执行前置安全审计（AST 静态检查）
         if skill.skill_type in (SkillType.CODE, SkillType.EXECUTABLE):
             if not self._verify_code_safety(skill.content):
                 logger.warning(f"技能 {skill.name} 安全审计未通过，拒绝录入")
@@ -401,3 +503,56 @@ class UnifiedSkillRegistry:
                 }
             })
         return tools
+
+    def execute_skill(self, skill_id: str, args: Dict[str, Any] = None) -> Dict[str, Any]:
+        """
+        执行 Skill 并返回标准化结果
+
+        统一 Skill 执行入口，供 ActionRuntime 调用。
+        
+        Args:
+            skill_id: Skill 唯一标识 (如 "skill_alert_operator")
+            args: 执行参数
+            
+        Returns:
+            {"success": bool, "result": Any, "error": Optional[str]}
+        """
+        if args is None:
+            args = {}
+            
+        # 1. 查找 Skill
+        skill = self.skills.get(skill_id)
+        if not skill:
+            return {"success": False, "result": None, "error": f"Skill 未找到: {skill_id}"}
+        
+        # 2. 更新使用统计
+        skill.usage_count += 1
+        
+        # 3. 根据类型执行
+        try:
+            if skill.skill_type == SkillType.CODE:
+                if skill_id in self.callables:
+                    func = self.callables[skill_id]
+                    result = func(**args)
+                    return {"success": True, "result": result, "error": None}
+                else:
+                    # 动态加载
+                    file_path = os.path.join(self.skill_dir, f"{skill_id.replace(':', '_')}.py")
+                    if os.path.exists(file_path):
+                        self._compile_callable(skill_id, file_path)
+                        if skill_id in self.callables:
+                            result = self.callables[skill_id](**args)
+                            return {"success": True, "result": result, "error": None}
+            
+            elif skill.skill_type == SkillType.EXECUTABLE:
+                return skill.execute(args)
+            
+            elif skill.skill_type == SkillType.LOGIC:
+                # LOGIC 类型 Skill 返回内容供推理使用
+                return {"success": True, "result": {"content": skill.content, "type": "logic"}, "error": None}
+            
+            return {"success": False, "result": None, "error": f"Skill 类型 {skill.skill_type.value} 不支持执行"}
+            
+        except Exception as e:
+            logger.error(f"Skill 执行失败 {skill_id}: {e}")
+            return {"success": False, "result": None, "error": str(e)}

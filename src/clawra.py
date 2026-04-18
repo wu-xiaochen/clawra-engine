@@ -10,6 +10,7 @@ import logging
 from .evolution.unified_logic import UnifiedLogicLayer
 from .evolution.meta_learner import MetaLearner
 from .evolution.rule_discovery import RuleDiscoveryEngine
+from .evolution.honcho_bridge import HonchoBridge
 from .core.reasoner import Reasoner, Fact
 from .core.knowledge_graph import KnowledgeGraph
 from .core.retriever import GraphRetriever, ContextBuilder, RetrievalResponse
@@ -88,7 +89,14 @@ class Clawra:
         self.self_evaluator = SelfEvaluator()
         
         # v2.0: Kinetic Layer 动作引擎
-        self.action_runtime = ActionRuntime(self.knowledge_graph, self.logic_layer)
+        # v4.2: 注入 SkillRegistry，使 action.type="execute" 能调用 Skill
+        from .evolution.skill_library import UnifiedSkillRegistry
+        self.skill_registry = UnifiedSkillRegistry(semantic_memory=None)
+        self.action_runtime = ActionRuntime(
+            self.knowledge_graph,
+            self.logic_layer,
+            skill_registry=self.skill_registry
+        )
         
         # 记忆系统按需初始化，避免不必要的数据库连接
         self.memory = None
@@ -118,6 +126,13 @@ class Clawra:
         # 从全局 ConfigManager 获取配置实例
         self.config = get_config()
         
+        # v4.2: Honcho桥接器 - 用户认知注入
+        self._honcho_bridge = HonchoBridge()
+
+        # v4.2.1: 从 Honcho 同步已有 conclusions → LogicLayer
+        # 打通"最后一公里"：确保用户认知在启动时就注入推理系统
+        self._honcho_bridge.sync_from_honcho_sync(self.logic_layer)
+
         logger.info("✅ Clawra 初始化完成")
     
     def learn(self, text: str, domain_hint: str = None) -> Dict[str, Any]:
@@ -244,6 +259,11 @@ class Clawra:
         # 1. 语义检索 (Graph-RAG)
         context = self.retrieve_context(query)
         
+        # v4.2: 注入用户认知指导 — 让推理过程遵循用户偏好
+        user_guidance = self.get_user_cognition_guidance()
+        if user_guidance:
+            context = f"[用户认知指导]\n{user_guidance}\n\n[知识上下文]\n{context}"
+        
         # v5.0: 情节记忆增强
         if hasattr(self, 'episodic_mgr'):
             episodic_context = self.episodic_mgr.get_structured_context(query)
@@ -265,6 +285,10 @@ class Clawra:
             f"Logic: 启动前向链推理，发现 {len(conclusions)} 条隐含结论",
             "Verification: 已通过本体引擎进行真值一致性校验"
         ])
+        
+        # v4.2: 如果有用户认知指导，记录到trace
+        if user_guidance:
+            trace.append(f"User: 已注入用户认知指导 ({len(user_guidance)} 字符)")
         
         return {
             "query": query,
@@ -386,6 +410,28 @@ class Clawra:
             })
         
         return patterns
+    
+    def get_user_cognition_guidance(self, predicate_filter: str = None) -> str:
+        """
+        获取用户认知行为指导（用于注入到响应上下文中）
+        
+        从 LogicLayer 查询 user_cognition domain 的 patterns，
+        通过 HonchoBridge 转换为自然语言指导。
+        
+        Args:
+            predicate_filter: 可选，只返回特定 predicate 的 patterns
+            
+        Returns:
+            自然语言行为指导字符串，每行一条
+        """
+        patterns = self._honcho_bridge.query_patterns(
+            self.logic_layer,
+            predicate_filter=predicate_filter,
+            domain="user_cognition"
+        )
+        if not patterns:
+            return ""
+        return self._honcho_bridge.patterns_to_guidance(patterns)
     
     def get_statistics(self) -> Dict[str, Any]:
         """

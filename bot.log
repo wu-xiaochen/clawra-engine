@@ -1,0 +1,6 @@
+2026-04-15 19:21:19,828 - __main__ - INFO - 🚀 启动 Clawra Discord Bot...
+2026-04-15 19:21:19,829 - discord.client - WARNING - davey is not installed, voice will NOT be supported
+2026-04-15 19:21:19,829 - discord.client - INFO - logging in using static token
+2026-04-15 19:21:49,955 - __main__ - ERROR - ❌ 启动失败: Connection timeout to host https://discord.com/api/v10/users/@me
+2026-04-15 19:21:49,972 - asyncio - ERROR - Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x112024d90>

@@ -392,6 +392,81 @@ class HonchoBridge:
         return "\n".join(lines)
 
 
+    async def sync_from_honcho(
+        self, logic_layer: "UnifiedLogicLayer", max_conclusions: int = 50
+    ) -> int:
+        """
+        从 Honcho API 同步已有 conclusions 到 LogicLayer。
+
+        这是 Clawra 初始化时的"最后一公里"——
+        确保 Honcho 记住的用户认知能流入 Clawra 的推理系统。
+
+        Returns:
+            成功存入的 patterns 数量
+        """
+        import httpx
+
+        conclusions: List[str] = []
+        try:
+            async with httpx.AsyncClient() as client:
+                # v3 API: POST /v3/workspaces/hermes/conclusions/list
+                response = await client.post(
+                    "http://localhost:8020/v3/workspaces/hermes/conclusions/list",
+                    json={"peer": "user"},
+                    timeout=5.0,
+                )
+                if response.status_code == 200:
+                    data = response.json()
+                    items = data.get("items", []) if isinstance(data, dict) else data
+                    conclusions = [item["content"] for item in items if "content" in item]
+        except Exception as e:
+            logger.debug(f"Honcho API 同步跳过（服务可能未运行）: {e}")
+            return 0
+
+        if not conclusions:
+            logger.debug("Honcho 中暂无 conclusions")
+            return 0
+
+        facts = self.extract_facts_from_conclusions(conclusions[:max_conclusions])
+        stored = self.store_as_patterns(facts, logic_layer)
+        if stored:
+            logger.info(f"Honcho → Clawra: 同步了 {len(stored)} 条用户认知 patterns")
+        return len(stored)
+
+    def sync_from_honcho_sync(
+        self, logic_layer: "UnifiedLogicLayer", max_conclusions: int = 50
+    ) -> int:
+        """
+        同步版本 — 直接用 httpx.SyncClient，不依赖 asyncio.run()。
+        避免在已存在事件循环的环境（如 Jupyter/集成测试）中挂起。
+        """
+        import httpx
+
+        conclusions: List[str] = []
+        try:
+            with httpx.Client(timeout=5.0) as client:
+                response = client.post(
+                    "http://localhost:8020/v3/workspaces/hermes/conclusions/list",
+                    json={"peer": "user"},
+                )
+                if response.status_code == 200:
+                    data = response.json()
+                    items = data.get("items", []) if isinstance(data, dict) else data
+                    conclusions = [item["content"] for item in items if "content" in item]
+        except Exception as e:
+            logger.debug(f"Honcho API 同步跳过: {e}")
+            return 0
+
+        if not conclusions:
+            return 0
+
+        facts = self.extract_facts_from_conclusions(conclusions[:max_conclusions])
+        stored = self.store_as_patterns(facts, logic_layer)
+        if stored:
+            logger.info(f"Honcho → Clawra: 同步了 {len(stored)} 条用户认知 patterns")
+        return len(stored)
+
+
 # 便捷函数
 def create_bridge() -> HonchoBridge:
     """工厂方法：创建 bridge 实例"""
