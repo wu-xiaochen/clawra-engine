@@ -8,8 +8,6 @@
 [![Tests](https://img.shields.io/badge/tests-433%20%25%20passing-brightgreen)](https://github.com/wu-xiaochen/clawra-engine/actions)
 [![GitHub Stars](https://img.shields.io/github/stars/wu-xiaochen/clawra-engine?style=social)](https://github.com/wu-xiaochen/clawra-engine/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/wu-xiaochen/clawra-engine?style=social)](https://github.com/wu-xiaochen/clawra-engine/network)
-[![Discord](https://img.shields.io/badge/Discord-Join-blue?logo=discord)](https://discord.gg/clawra)
-[![Twitter](https://img.shields.io/badge/Twitter-Follow-blue?logo=twitter)](https://twitter.com/clawra_ai)
 
 ---
 
@@ -201,7 +199,7 @@ clawra-engine/
 │   ├── agents/                   # Agent 编排层
 │   │   ├── orchestrator.py       # ReAct 异步编排器
 │   │   └── metacognition.py      # 元认知监控
-│   ├── core/
+│   ├── core
 │   │   ├── reasoner.py           # 神经符号推理引擎
 │   │   ├── retriever.py          # GraphRAG 检索器
 │   │   ├── rule_engine.py        # AST 规则引擎
