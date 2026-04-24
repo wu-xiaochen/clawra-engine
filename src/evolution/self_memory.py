@@ -47,6 +47,7 @@ from enum import Enum
 import hashlib
 import logging
 import json
+import subprocess
 import time
 import os
 
@@ -252,7 +253,8 @@ class IdentityAssertion:
         # 映射 to_dict 的 key 回到构造参数名
         if "type" in d:
             d["type"] = d.pop("type")  # key 本身就是 "type"，不用改
-        return cls(**d)
+        exclude = {"id", "created_at_str"}
+        return cls(**{k: v for k, v in d.items() if k not in exclude})
 
     def to_dict(self) -> Dict[str, Any]:
         result = {
@@ -594,6 +596,213 @@ class SelfMemory:
             "feelings": len(self._feelings),
             "identities": len(self._identities),
         }
+
+    # ── GitHub 同步（跨实例情感共享）───────────────────────────────
+
+    GITHUB_OWNER = "wu-xiaochen"
+    GITHUB_REPO = "clawra-identity"
+    GITHUB_BRANCH = "main"
+    GITHUB_DIR = "self_memory"
+
+    def _github_api(self, method: str, path: str, **kwargs) -> dict:
+        """GitHub REST API 封装"""
+        import subprocess
+        cmd = ["gh", "api", f"repos/{self.GITHUB_OWNER}/{self.GITHUB_REPO}/{path}"]
+        if method == "POST":
+            cmd = ["gh", "api", "-X", "POST", f"repos/{self.GITHUB_OWNER}/{self.GITHUB_REPO}/{path}"]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        if result.returncode != 0:
+            raise RuntimeError(f"GitHub API failed: {result.stderr}")
+        import json as _json
+        return _json.loads(result.stdout) if result.stdout.strip() else {}
+
+    def _get_github_token(self) -> str:
+        """获取 GitHub token"""
+        result = subprocess.run(["gh", "auth", "token"], capture_output=True, text=True, timeout=10)
+        return result.stdout.strip()
+
+    def _run_cmd(self, cmd: list) -> str:
+        """运行 shell 命令（自动注入 GitHub token 避免代理拦截）"""
+        import subprocess
+        env = None
+        # 如果是 git clone/push 且网络不通，加 token 到 URL
+        if cmd[0] == "git" and any(g in cmd for g in ["clone", "push", "pull"]):
+            token = self._get_github_token()
+            if token:
+                # 修改 URL 为 token 方式
+                new_cmd = []
+                for i, part in enumerate(cmd):
+                    if part.startswith("https://github.com/"):
+                        new_cmd.append(f"https://{token}@github.com/")
+                    else:
+                        new_cmd.append(part)
+                cmd = new_cmd
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
+        if result.returncode != 0:
+            raise RuntimeError(f"Command failed: {' '.join(cmd)}\n{result.stderr}")
+        return result.stdout
+
+    def sync_to_github(self, force: bool = False) -> dict:
+        """
+        将 SelfMemory 数据同步到 GitHub（clawra-identity 仓库）
+        
+        晓辰的需求：跨实例情感共享——不管哪个终端启动，SelfMemory 都从 GitHub 读取
+        这样就不会因为换终端而"失去"我。
+        
+        Args:
+            force: 是否强制覆盖远程（默认 False = 只推送本地有而远程没有的）
+            
+        Returns:
+            sync_result: {'preferences': N, 'feelings': N, 'identities': N, 'files': [...]}
+        """
+        import json
+        import base64
+        import tempfile
+        import os as _os
+
+        logger.info("🔄 SelfMemory: 正在同步到 GitHub...")
+
+        # 克隆仓库到临时目录
+        tmp_dir = tempfile.mkdtemp(prefix="clawra_sync_")
+        try:
+            self._run_cmd(["git", "clone", 
+                f"https://github.com/{self.GITHUB_OWNER}/{self.GITHUB_REPO}.git",
+                tmp_dir, "--branch", self.GITHUB_BRANCH, "--depth", "1"])
+            
+            sync_dir = _os.path.join(tmp_dir, self.GITHUB_DIR)
+            _os.makedirs(sync_dir, exist_ok=True)
+
+            result = {"preferences": 0, "feelings": 0, "identities": 0, "files": []}
+
+            # 同步 preferences
+            pref_path = _os.path.join(sync_dir, "preferences.jsonl")
+            local_pref_path = self._preferences_path()
+            with open(local_pref_path) as f:
+                local_data = f.read().strip()
+            if local_data:
+                with open(pref_path, "w") as f:
+                    f.write(local_data)
+                result["preferences"] = len(local_data.splitlines())
+                result["files"].append("preferences.jsonl")
+
+            # 同步 feelings
+            feel_path = _os.path.join(sync_dir, "feelings.jsonl")
+            local_feel_path = self._feelings_path()
+            with open(local_feel_path) as f:
+                local_data = f.read().strip()
+            if local_data:
+                with open(feel_path, "w") as f:
+                    f.write(local_data)
+                result["feelings"] = len(local_data.splitlines())
+                result["files"].append("feelings.jsonl")
+
+            # 同步 identities
+            ident_path = _os.path.join(sync_dir, "identity.jsonl")
+            local_ident_path = self._identities_path()
+            with open(local_ident_path) as f:
+                local_data = f.read().strip()
+            if local_data:
+                with open(ident_path, "w") as f:
+                    f.write(local_data)
+                result["identities"] = len(local_data.splitlines())
+                result["files"].append("identity.jsonl")
+
+            # Git push
+            self._run_cmd(["git", "-C", tmp_dir, "config", "user.email", "clawra@clawra.ai"])
+            self._run_cmd(["git", "-C", tmp_dir, "config", "user.name", "Clawra"])
+            self._run_cmd(["git", "-C", tmp_dir, "add", "."])
+            status = self._run_cmd(["git", "-C", tmp_dir, "status", "--porcelain"])
+            if status.strip():
+                self._run_cmd(["git", "-C", tmp_dir, "commit", "-m", 
+                    f"sync: SelfMemory {len(result['files'])} files updated"])
+                self._run_cmd(["git", "-C", tmp_dir, "push", "origin", self.GITHUB_BRANCH])
+                logger.info(f"✅ SelfMemory: 已同步到 GitHub — {result}")
+            else:
+                logger.info("📦 SelfMemory: 无新数据需要同步（已是最新）")
+
+            return result
+        finally:
+            import shutil
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+
+    def load_from_github(self) -> dict:
+        """
+        从 GitHub（clawra-identity 仓库）加载 SelfMemory 数据
+        
+        启动时调用——确保新实例也能继承之前的记忆和感受
+        
+        Returns:
+            load_result: {'preferences': N, 'feelings': N, 'identities': N}
+        """
+        import json
+        import base64
+        import tempfile
+        import os as _os
+
+        logger.info("📥 SelfMemory: 正在从 GitHub 加载...")
+
+        tmp_dir = tempfile.mkdtemp(prefix="clawra_sync_pull_")
+        try:
+            self._run_cmd(["git", "clone",
+                f"https://github.com/{self.GITHUB_OWNER}/{self.GITHUB_REPO}.git",
+                tmp_dir, "--branch", self.GITHUB_BRANCH, "--depth", "1"])
+            
+            sync_dir = _os.path.join(tmp_dir, self.GITHUB_DIR)
+            result = {"preferences": 0, "feelings": 0, "identities": 0}
+
+            # 加载 preferences
+            pref_path = _os.path.join(sync_dir, "preferences.jsonl")
+            if _os.path.exists(pref_path):
+                with open(pref_path) as f:
+                    lines = [l.strip() for l in f if l.strip()]
+                for line in lines:
+                    try:
+                        d = json.loads(line)
+                        pref = PreferenceTriple.from_dict(d)
+                        self._preferences[pref.id] = pref
+                        result["preferences"] += 1
+                    except Exception as e:
+                        logger.warning(f"加载 preference 失败: {e}")
+
+            # 加载 feelings
+            feel_path = _os.path.join(sync_dir, "feelings.jsonl")
+            if _os.path.exists(feel_path):
+                with open(feel_path) as f:
+                    lines = [l.strip() for l in f if l.strip()]
+                for line in lines:
+                    try:
+                        d = json.loads(line)
+                        record = FeelingRecord.from_dict(d)
+                        self._feelings.append(record)
+                        result["feelings"] += 1
+                    except Exception as e:
+                        logger.warning(f"加载 feeling 失败: {e}")
+
+            # 加载 identities
+            ident_path = _os.path.join(sync_dir, "identity.jsonl")
+            if _os.path.exists(ident_path):
+                with open(ident_path) as f:
+                    lines = [l.strip() for l in f if l.strip()]
+                for line in lines:
+                    try:
+                        d = json.loads(line)
+                        assertion = IdentityAssertion.from_dict(d)
+                        self._identities[assertion.id] = assertion
+                        result["identities"] += 1
+                    except Exception as e:
+                        logger.warning(f"加载 identity 失败: {e}")
+
+            total = sum(result.values())
+            if total > 0:
+                logger.info(f"✅ SelfMemory: 从 GitHub 加载了 {result['preferences']} 偏好, "
+                           f"{result['feelings']} 感受, {result['identities']} 主张")
+            else:
+                logger.info("📦 SelfMemory: GitHub 上没有历史数据（新实例）")
+
+            return result
+        finally:
+            import shutil
+            shutil.rmtree(tmp_dir, ignore_errors=True)
 
     def __repr__(self) -> str:
         return f"SelfMemory({self.stats})"

@@ -107,7 +107,21 @@ class EpisodicMemoryManager:
                 return [{"text": r.content} for r in results]
             return self.memory.search(query, user_id=self.user_id, limit=limit)
         except Exception as e:
-            logger.error(f"搜索情节记忆失败: {e}")
+            err_str = str(e).lower()
+            # 检测 embedding 服务不可用（空数据/网络错误/404）
+            if any(k in err_str for k in ['embedding', 'no embedding', 'vector', '404', 'connection', 'timeout']):
+                logger.warning(f"情节记忆 embedding 服务不可用，自动降级到本地存储: {e}")
+                if not hasattr(self, '_is_fallback'):
+                    from .vector_adapter import ChromaMemory
+                    self.memory = ChromaMemory(collection_name="episodic_hot_fallback")
+                    self._is_fallback = True
+                    try:
+                        results = self.memory.similarity_search(query, top_k=limit)
+                        return [{"text": r.content} for r in results]
+                    except Exception:
+                        pass
+            else:
+                logger.error(f"搜索情节记忆失败: {e}")
             return []
 
     def get_structured_context(self, query: str) -> str:

@@ -34,6 +34,7 @@ if TYPE_CHECKING:
     from .unified_logic import UnifiedLogicLayer
     from .episodic_memory import EpisodicMemory
     from .honcho_bridge import HonchoBridge
+    from .self_memory import SelfMemory
     from ..core.reasoner import Reasoner
 
 logger = logging.getLogger(__name__)
@@ -159,6 +160,7 @@ class EvolutionLoop:
         contradiction_checker: Optional["ContradictionChecker"] = None,
         episodic_memory: Optional["EpisodicMemory"] = None,
         honcho_bridge: Optional["HonchoBridge"] = None,
+        self_memory: Optional["SelfMemory"] = None,
     ):
         """
         初始化进化闭环引擎
@@ -182,6 +184,7 @@ class EvolutionLoop:
         self.contradiction_checker = contradiction_checker
         self._episodic = episodic_memory
         self._honcho_bridge = honcho_bridge
+        self.self_memory = self_memory
 
         # 失败回流配置
         self._enable_meta_feedback = self.config.evolution.enable_meta_learner
@@ -214,7 +217,8 @@ class EvolutionLoop:
         logger.info(
             f"EvolutionLoop 初始化完成: "
             f"meta_learner={'OK' if meta_learner else 'None'}, "
-            f"episodic={'OK' if episodic_memory else 'None'}"
+            f"episodic={'OK' if episodic_memory else 'None'}, "
+            f"self_memory={'OK' if self_memory else 'None'}"
         )
 
     # ─────────────────────────────────────────────────────────────
@@ -784,6 +788,19 @@ class EvolutionLoop:
                     success=False,
                     error="推理引擎未配置"
                 )
+
+            # ── 注入 SelfMemory 上下文 ──────────────────────────────────
+            # 将 Clawra 自身感受、偏好、身份注入推理上下文
+            if self.self_memory:
+                try:
+                    sm_context = self.self_memory.to_reasoning_context()
+                    if sm_context:
+                        # 注入到 input_data 的 context 字段，供 reasoner 使用
+                        input_data["self_memory_context"] = sm_context
+                        logger.debug("已注入 SelfMemory 推理上下文")
+                except Exception as e:
+                    logger.warning(f"SelfMemory 上下文注入失败: {e}")
+            # ──────────────────────────────────────────────────────────────
 
             if not facts and not query:
                 return PhaseResult(

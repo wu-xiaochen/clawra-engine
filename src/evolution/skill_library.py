@@ -27,6 +27,7 @@ class SkillType(Enum):
     CODE = "code"   # 可执行 Python 代码
     LOGIC = "logic" # DSL/SQL 推理模板
     EXECUTABLE = "executable"  # 可执行结构化指令（AST 安全执行）
+    SCRIPT = "script"  # Shell 脚本
 
 @dataclass
 class Skill:

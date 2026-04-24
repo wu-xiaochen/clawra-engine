@@ -117,21 +117,25 @@ class HonchoBridge:
         subject = subject or self.DEFAULT_SUBJECT
 
         # 规则提取（主要路径，完全本地，不依赖 LLM）
+        # Honcho conclusions 是结构化短文本，正则已覆盖主要 patterns
         facts = self._rule_based_extract(conclusion, subject)
         if facts:
             return facts
 
-        # 规则失败 → 尝试 LLM（兜底）
-        try:
-            result = self._extractor.extract(conclusion, domain_hint="user_cognition")
-            for relation in result.relations:
-                facts.append({
-                    "subject": subject,
-                    "predicate": self._normalize_predicate(relation.predicate),
-                    "object": relation.object,
-                })
-        except Exception:
-            pass
+        # 规则失败 → 尝试 LLM（兜底，仅在非短文本场景使用）
+        # 注意：Honcho conclusions 已被英文正则覆盖，极少数不匹配才走 LLM
+        # 使用较长阈值（200字符）减少不必要的 LLM 调用
+        if len(conclusion) > 200:
+            try:
+                result = self._extractor.extract(conclusion, domain_hint="user_cognition")
+                for relation in result.relations:
+                    facts.append({
+                        "subject": subject,
+                        "predicate": self._normalize_predicate(relation.predicate),
+                        "object": relation.object,
+                    })
+            except Exception:
+                pass
 
         return facts
 
@@ -244,6 +248,46 @@ class HonchoBridge:
             item = desc_match.group(1).strip().rstrip('。，、')
             pred = self._infer_predicate(item, "风格特征")
             facts.append({"subject": subject, "predicate": pred, "object": item[:30]})
+            return facts
+
+        # ── 英文 Honcho 格式支持 ────────────────────
+        # 格式: "user-default-xiaochenwu <verb phrase>"
+        # 覆盖常见动词模式
+        english_patterns = [
+            # prefers / dislikes / likes / hates
+            (r"user\S+\s+(?:prefers|dislikes|likes|hates)\s+(.+?)(?:\.|,|$)", "沟通偏好"),
+            # requires / expects / wants / needs
+            (r"user\S+\s+(?:requires|expects|wants|needs)\s+(.+?)(?:\.|,|$)", "期望行为"),
+            # enforces / applies / maintains / sets a ... requirement
+            (r"user\S+\s+(?:enforces|applies|maintains)\s+(?:a\s+)?(?:.+?\s+)?(?:requirement|policy|standard)\s+(?:that\s+)?(.+?)(?:\.|,|$)", "行为特征"),
+            # enforces / applies / maintains / sets ...（非requirement类）
+            (r"user\S+\s+(?:enforces|applies|maintains|sets)\s+(?:a\s+)?(.+?)(?:\.|,|$)", "行为特征"),
+            # acts as
+            (r"user\S+\s+acts\s+as\s+(.+?)(?:\.|,|$)", "身份特征"),
+            # runs on / uses / deploys / manages ... using
+            (r"user\S+\s+(?:runs\s+on|uses|deploys)\s+(.+?)(?:\s+using|\s+and|\.|,|$)", "工作习惯"),
+            # manages ... using
+            (r"user\S+\s+manages\s+(.+?)\s+using\s+(.+?)(?:\.|,|$)", "工作习惯"),
+            # fixed / corrected / updated ... on
+            (r"user\S+\s+(?:fixed|corrected|updated)\s+(?:.+?\s+)?(.+?)(?:\s+on|\.|,|$)", "行为特征"),
+            # is preparing / is doing / is working on
+            (r"user\S+\s+is\s+(?:preparing|doing|working\s+on)\s+(.+?)(?:\.|,|$)", "工作内容"),
+            # blocks / is blocked by
+            (r"user\S+\s+(?:is\s+)?blocked\s+by\s+(.+?)(?:\.|,|$)", "环境限制"),
+            # uses X as
+            (r"user\S+\s+uses\s+(.+?)(?:\s+as|\.|,|$)", "工具使用"),
+            # established / upgraded ... on
+            (r"user\S+\s+(?:established|upgraded)\s+(?:a\s+)?(.+?)\s+(?:on|effective)\s+(.+?)(?:\.|,|$)", "行为特征"),
+            # differentiates ... from
+            (r"user\S+\s+differentiates?\s+(?:.+?)\s+from\s+(.+?)(?:\.|,|$)", "身份特征"),
+        ]
+
+        for pattern, predicate in english_patterns:
+            m = re.search(pattern, conclusion, re.IGNORECASE)
+            if m:
+                item = m.group(1).strip().rstrip('.,').strip()
+                facts.append({"subject": subject, "predicate": predicate, "object": item[:30]})
+                return facts
 
         return facts
 

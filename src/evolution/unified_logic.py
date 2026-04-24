@@ -984,7 +984,141 @@ class UnifiedLogicLayer:
             "object": obj,
             "bindings": bindings
         }
-    
+
+    # ── WORKFLOW IR 集成 ──────────────────────────────────────────────────────
+
+    def add_workflow_from_ir(self, ir: "WorkflowIR", domain: str = "generic") -> bool:
+        """
+        将 WorkflowIR 注册为 LogicPattern(LOGIC_TYPE.WORKFLOW)
+
+        Args:
+            ir: WorkflowIR 实例
+            domain: 领域
+
+        Returns:
+            True 注册成功
+        """
+        try:
+            # 转换 steps 为 actions
+            actions = []
+            for step in ir.steps:
+                action = {
+                    "type": "workflow_step",
+                    "step_id": step.id,
+                    "step_type": step.step_type.value,
+                }
+                if step.action:
+                    action["action"] = step.action
+                if step.condition:
+                    action["condition"] = step.condition
+                if step.then_step:
+                    action["then_step"] = step.then_step
+                if step.else_step:
+                    action["else_step"] = step.else_step
+                if step.next_step:
+                    action["next_step"] = step.next_step
+                actions.append(action)
+
+            # 构造 conditions（entry step 匹配即执行）
+            conditions = [{"subject": "workflow", "predicate": "is_a", "object": ir.id}]
+
+            pattern = LogicPattern(
+                id=ir.id,
+                logic_type=LogicType.WORKFLOW,
+                name=ir.name,
+                description=ir.description,
+                conditions=conditions,
+                actions=actions,
+                object_type="Workflow",
+                confidence=0.9,
+                source="workflow_ir",
+                domain=domain,
+            )
+            return self.add_pattern(pattern)
+        except Exception as e:
+            logger.error(f"注册 WORKFLOW pattern 失败: {e}")
+            return False
+
+    def execute_workflow(
+        self,
+        pattern_id: str,
+        initial_state: Optional[Dict[str, Any]] = None,
+        context: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        执行 WORKFLOW 类型 pattern
+
+        Args:
+            pattern_id: workflow pattern id
+            initial_state: 初始状态
+            context: 执行上下文（含 functions/condition_evaluator）
+
+        Returns:
+            {"success": bool, "state": Dict, "explanation": str}
+        """
+        pattern = self.patterns.get(pattern_id)
+        if not pattern or pattern.logic_type != LogicType.WORKFLOW:
+            return {"success": False, "state": {}, "explanation": f"Pattern {pattern_id} 不是 WORKFLOW 类型"}
+
+        try:
+            # 动态导入避免循环依赖
+            from .workflow_ir import WorkflowEngine, WorkflowIR
+
+            # 从 raw_definition 重建 WorkflowIR
+            if pattern.source == "workflow_ir" and hasattr(pattern, "_workflow_ir"):
+                ir = pattern._workflow_ir
+            else:
+                # 尝试从 actions 重建（兼容性）
+                steps = []
+                for action in pattern.actions:
+                    from .workflow_ir import StepType as WFStepType
+                    step_type_str = action.get("step_type", "action")
+                    try:
+                        step_type = WFStepType(step_type_str)
+                    except ValueError:
+                        step_type = WFStepType.ACTION
+
+                    steps.append({
+                        "id": action.get("step_id", f"step_{len(steps)}"),
+                        "type": step_type_str,
+                        "action": action.get("action"),
+                        "condition": action.get("condition"),
+                        "then": action.get("then_step"),
+                        "else": action.get("else_step"),
+                        "next": action.get("next_step"),
+                    })
+
+                ir = WorkflowIR(
+                    id=pattern.id,
+                    name=pattern.name,
+                    description=pattern.description,
+                    steps=steps,
+                    entry_step="start",
+                    domain=pattern.domain,
+                )
+
+            engine = WorkflowEngine()
+            sm = engine.compile(ir, target="state_machine")
+            final_state = sm.run(initial_state=initial_state, context=context or {})
+
+            # 记录执行
+            self.execution_history.append({
+                "pattern_id": pattern_id,
+                "timestamp": time.time(),
+                "success": True,
+                "final_state": final_state,
+            })
+            pattern.update_success_rate(True)
+
+            return {
+                "success": True,
+                "state": final_state,
+                "explanation": f"WORKFLOW {pattern.name} 执行完成"
+            }
+        except Exception as e:
+            logger.error(f"执行 WORKFLOW {pattern_id} 失败: {e}")
+            return {"success": False, "state": {}, "explanation": f"执行错误: {e}"}
+
     def get_statistics(self) -> Dict:
         """获取逻辑层统计信息"""
         return {

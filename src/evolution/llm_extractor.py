@@ -135,6 +135,8 @@ class LLMKnowledgeExtractor:
         # LLM 连续失败计数，超过阈值自动降级到正则
         self._consecutive_failures = 0
         self._max_failures = cfg.llm_fallback.max_consecutive_failures  # 从配置读取最大连续失败次数
+        # LLM HTTP 请求 timeout（秒），防止网络问题时永久阻塞
+        self._timeout = getattr(perf_cfg, 'llm_timeout', 10.0) if perf_cfg else 10.0
 
     @property
     def is_available(self) -> bool:
@@ -240,7 +242,7 @@ class LLMKnowledgeExtractor:
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.3,
                 max_tokens=2000,
-            )
+                timeout=self._timeout,            )
             content = resp.choices[0].message.content or ""
             # 去除思维链标签（推理模型如 MiniMax-M2.7 会输出 <think>...</think>）
             content = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL).strip()
@@ -268,6 +270,7 @@ class LLMKnowledgeExtractor:
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.3,
                 max_tokens=2000,
+                timeout=self._timeout,
             )
             content = resp.choices[0].message.content or ""
             # 去除思维链标签
