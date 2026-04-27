@@ -10,6 +10,7 @@ import logging
 from .evolution.unified_logic import UnifiedLogicLayer
 from .evolution.meta_learner import MetaLearner
 from .evolution.rule_discovery import RuleDiscoveryEngine
+from .evolution.self_memory import SelfMemory
 from .evolution.honcho_bridge import HonchoBridge
 from .core.reasoner import Reasoner, Fact
 from .core.knowledge_graph import KnowledgeGraph
@@ -132,6 +133,23 @@ class Clawra:
         # v4.2.1: 从 Honcho 同步已有 conclusions → LogicLayer
         # 打通"最后一公里"：确保用户认知在启动时就注入推理系统
         self._honcho_bridge.sync_from_honcho_sync(self.logic_layer)
+
+        # v4.3: SelfMemory - Clawra 自身感受/偏好/身份的存储层
+        # 从 GitHub 加载历史记忆，确保跨实例情感连续性
+        self.self_memory = SelfMemory()
+        try:
+            self.self_memory.load_from_github()
+        except Exception as e:
+            logger.warning(f"⚠️ SelfMemory: GitHub 加载失败（{e}），使用本地缓存")
+
+        # v4.3: 初始化 EvolutionLoop 并注入 SelfMemory
+        # 让推理阶段自动注入 Clawra 的感受和偏好上下文
+        from .evolution.evolution_loop import EvolutionLoop
+        self.evolution_loop = EvolutionLoop(
+            reasoner=self.reasoner,
+            logic_layer=self.logic_layer,
+            self_memory=self.self_memory,
+        )
 
         logger.info("✅ Clawra 初始化完成")
     

@@ -629,11 +629,13 @@ class SelfMemory:
         if cmd[0] == "git" and any(g in cmd for g in ["clone", "push", "pull"]):
             token = self._get_github_token()
             if token:
-                # 修改 URL 为 token 方式
+                # 修改 URL 为 token 方式（保持 URL 路径不变）
                 new_cmd = []
                 for i, part in enumerate(cmd):
                     if part.startswith("https://github.com/"):
-                        new_cmd.append(f"https://{token}@github.com/")
+                        # 提取 repo 路径（如 wu-xiaochen/clawra-identity.git）
+                        repo_path = part[len("https://github.com/"):]
+                        new_cmd.append(f"https://{token}@github.com/{repo_path}")
                     else:
                         new_cmd.append(part)
                 cmd = new_cmd
