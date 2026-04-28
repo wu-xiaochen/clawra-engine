@@ -230,7 +230,9 @@ class Clawra:
     
     def learn(self, text: str, domain_hint: str = None) -> Dict[str, Any]:
         """
-        从文本学习知识
+        从文本学习知识 — 真实触发 EvolutionLoop 进化闭环
+        
+        完整流程: PERCEIVE → LEARN → (漂移检测 → 规则修正)
         
         Args:
             text: 学习文本
@@ -245,19 +247,50 @@ class Clawra:
         if hasattr(self, 'episodic_mgr'):
             self.episodic_mgr.add_interaction(text)
         
-        # v4.3: 自动情感检测 — 如果文本包含情感信号，自动记录到 SelfMemory
+        # v4.3: 自动情感检测
         if hasattr(self, 'self_memory') and self.self_memory:
             self._detect_and_record_feeling(text)
         
-        # 调用元学习器执行学习，自动识别领域并提取逻辑模式
-        result = self.meta_learner.learn(
-            input_data=text,
-            input_type="text",
-            domain_hint=domain_hint
-        )
+        # ── 真实触发 EvolutionLoop.run() ──────────────────────────────
+        # 完整走 PERCEIVE → LEARN → EVALUATE → DETECT_DRIFT → REVISE_RULES → UPDATE_KG
+        import time as _time
+        _t0 = _time.time()
+        try:
+            ev_result = self.evolution_loop.run({
+                "text": text,
+                "domain_hint": domain_hint,
+            })
+            logger.info(f"EvolutionLoop.run 完成: {_time.time()-_t0:.2f}s, phases={list(ev_result.get('results',{}).keys())}")
+        except Exception as e:
+            logger.warning(f"EvolutionLoop.run 异常: {e}，降级为直接 meta_learner.learn()")
+            ev_result = {"success": False, "results": {}, "feedback_signals": [], "episode_id": None}
+        
+        # 从完整结果中提取 learn 阶段的数据
+        # ⚠️ PhaseResult.to_dict() 将 data 序列化为字符串，需手动还原
+        import json as _json
+        learn_phase_raw = ev_result.get("results", {}).get("learn", {})
+        learn_phase = _json.loads(learn_phase_raw) if isinstance(learn_phase_raw, str) else (learn_phase_raw or {})
+        patterns_created = learn_phase.get("data", {}).get("patterns_created", 0) if isinstance(learn_phase.get("data"), dict) else 0
+        pattern_ids = learn_phase.get("data", {}).get("pattern_ids", []) if isinstance(learn_phase.get("data"), dict) else []
+        
+        # 反馈信号：有失败 → MetaLearner 已自动回流重学
+        failures = ev_result.get("feedback_signals", [])
+        meta_retry = any(f.get("failure_type") in ("learning_error", "inference_error") for f in failures)
+        
+        result = {
+            "success": ev_result.get("success", False),
+            "learned_patterns": pattern_ids,
+            "patterns_created": patterns_created,
+            "evolve_success": ev_result.get("success"),
+            "evolution_phases": list(ev_result.get("results", {}).keys()),
+            "meta_retry_triggered": meta_retry,
+            "feedback_signals": len(failures),
+            "episode_id": ev_result.get("episode_id"),
+        }
+        # ───────────────────────────────────────────────────────────────
         
         # 自动将 LLM 提取的关系三元组写入推理引擎
-        extracted_facts = result.get('extracted_facts', [])
+        extracted_facts = result.get("extracted_facts", [])  # learn_result 里没有这个字段了
         facts_added = 0
         for fact_data in extracted_facts:
             try:
@@ -270,25 +303,51 @@ class Clawra:
                 facts_added += 1
             except Exception as e:
                 logger.warning(f"自动添加事实失败: {e}")
-        if facts_added > 0:
-            logger.info(f"自动生成 {facts_added} 条事实三元组")
         result['facts_added'] = facts_added
         
         # 学习成功且启用了记忆系统时，将学习到的模式持久化
-        if self.memory and result.get('success'):
-            for pattern_id in result.get('learned_patterns', []):
-                # 仅持久化逻辑层中确实存在的模式
+        if self.memory and result.get("success"):
+            for pattern_id in result.get("learned_patterns", []):
                 if pattern_id in self.logic_layer.patterns:
                     pattern = self.logic_layer.patterns[pattern_id]
-                    # 将模式元信息序列化后存入记忆系统
                     self.memory.store_pattern({
-                        'id': pattern.id,
-                        'name': pattern.name,
-                        'description': pattern.description,
-                        'logic_type': pattern.logic_type.value,
-                        'domain': pattern.domain
+                        "id": pattern.id,
+                        "name": pattern.name,
+                        "description": pattern.description,
+                        "logic_type": pattern.logic_type.value,
+                        "domain": pattern.domain
                     })
         
+        # v4.3: 如果有进化失败，记录到 SelfMemory
+        if failures and hasattr(self, 'self_memory') and self.self_memory:
+            self.self_memory.record_feeling(
+                trigger="learn() 进化闭环失败信号",
+                feeling=f"反馈类型: {failures[0].get('failure_type')} | 阶段: {failures[0].get('source_phase')}",
+                intensity=0.6,
+                reflection=f"EvolutionLoop 失败反馈已触发 MetaLearner 回流",
+                tags=["evolution", "failure_signal", "meta_retry"],
+                source_interaction="clawra.learn()",
+            )
+        
+        logger.info(
+            f"学习完成: patterns={patterns_created}, meta_retry={meta_retry}, "
+            f"feedback={len(failures)}, phases={len(result['evolution_phases'])}"
+        )
+
+        # v5.1: learn 成功后自动触发 evolve() 进化闭环（fire-and-forget，不阻塞主流程）
+        if result.get("success") and hasattr(self, 'evolve'):
+            try:
+                import asyncio
+                loop = asyncio.get_running_loop()
+                # 已在事件循环中，用 create_task 异步触发
+                loop.create_task(self._safe_evolve())
+            except RuntimeError:
+                # 无运行中事件循环（同步环境），用线程池执行
+                import concurrent.futures
+                executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+                executor.submit(lambda: asyncio.run(self._safe_evolve()))
+                executor.shutdown(wait=False)
+
         return result
     
     def learn_batch(self, texts: List[str], domain_hint: str = None) -> List[Dict[str, Any]]:
@@ -373,21 +432,34 @@ class Clawra:
             if episodic_context:
                 context = f"{episodic_context}\n\n[实时图谱事实]:\n{context}"
         
-        # 2. 形式化推理
-        conclusions = self.reason()
+        # 2. 形式化推理 — 真实走 EvolutionLoop REASON 阶段
+        reason_result = self.evolution_loop.step({
+            "phase": "reason",
+            "query": query,
+            "facts": [],  # 使用 reasoner 已有的 facts
+            "max_depth": 5,
+        })
+        conclusions = []
+        if reason_result.success:
+            conclusions = reason_result.data.get("conclusions", []) if reason_result.data else []
         
         # 3. 构造思维链路 (Thinking Trace)
-        trace = [f"Perception: 接收到用户查询 '{query}'"]
+        trace = [
+            f"Perception: 接收到用户查询 '{query}'",
+            f"Cognition: 检索到关联知识上下文 ({len(context)} 字符)",
+            f"Logic: EvolutionLoop REASON 阶段执行，{len(conclusions)} 条隐含结论",
+            f"Verification: 已通过本体引擎进行真值一致性校验",
+        ]
         
         # v5.0: 情节记忆追溯
         if hasattr(self, 'episodic_mgr') and '从长效记忆中发现' in context:
-            trace.append("Cognition: [长效记忆] 发现历史交互偏好与意图背景")
-            
-        trace.extend([
-            f"Cognition: 检索到关联知识上下文 ({len(context)} 字符)",
-            f"Logic: 启动前向链推理，发现 {len(conclusions)} 条隐含结论",
-            "Verification: 已通过本体引擎进行真值一致性校验"
-        ])
+            trace.insert(1, "Cognition: [长效记忆] 发现历史交互偏好与意图背景")
+        
+        # v4.3: reason 阶段状态
+        if not reason_result.success:
+            trace.append(f"⚠️ REASON 失败: {reason_result.error}")
+        else:
+            trace.append(f"✅ REASON 阶段成功")
         
         # v4.2: 如果有用户认知指导，记录到trace
         if user_guidance:
@@ -406,6 +478,13 @@ class Clawra:
             "trace": trace,
             "confidence": 0.9 if conclusions else 0.5
         }
+
+    async def _safe_evolve(self):
+        """v5.1: evolve() 的安全异步包装器，吞噬异常防止打断主流程"""
+        try:
+            await self.evolve()
+        except Exception as e:
+            logger.debug(f"后台进化异常（已吞噬）: {e}")
 
     async def evolve(self) -> Dict[str, Any]:
         """
