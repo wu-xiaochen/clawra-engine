@@ -383,7 +383,10 @@ class Clawra:
     
     def reason(self, max_depth: int = 3) -> List[str]:
         """
-        执行推理
+        执行推理 — 真实走 EvolutionLoop REASON 阶段
+        
+        完整路径: evolution_loop.step(reason) → SelfMemory上下文注入 → 
+        reasoner.forward_chain() → PhaseResult
         
         Args:
             max_depth: 推理深度
@@ -393,13 +396,39 @@ class Clawra:
         """
         logger.info(f"开始推理，深度: {max_depth}")
         
-        # 执行前向链推理，从已有事实出发推导新结论
-        result = self.reasoner.forward_chain(max_depth=max_depth)
+        # 将 reasoner 中的已有事实传入 Engine REASON 阶段
+        facts_data = [
+            {"subject": f.subject, "predicate": f.predicate, "object": f.object, "confidence": f.confidence}
+            for f in self.reasoner.facts
+        ]
         
-        # 安全提取结论列表，兼容不同版本的 InferenceResult
+        # 走 EvolutionLoop.step(reason)，注入 SelfMemory 上下文
+        phase_result = self.evolution_loop.step({
+            "phase": "reason",
+            "facts": facts_data,
+            "query": "",
+            "max_depth": max_depth,
+        })
+        
+        # 从 PhaseResult 中提取结论
         conclusions = []
-        if hasattr(result, 'conclusions'):
-            conclusions = result.conclusions
+        if phase_result.success and phase_result.data:
+            raw = phase_result.data.get("conclusions", [])
+            if isinstance(raw, list):
+                for c in raw:
+                    if isinstance(c, dict):
+                        conclusions.append(f"{c.get('subject', '')} {c.get('predicate', '')} {c.get('object', '')}".strip())
+                    else:
+                        conclusions.append(str(c))
+            elif isinstance(raw, list) and len(raw) == 0:
+                pass  # 无结论，正常
+        
+        if not phase_result.success:
+            logger.warning(f"推理阶段异常: {phase_result.error}，降级为直接 reasoner 调用")
+            # 降级：直接走 reasoner
+            result = self.reasoner.forward_chain(max_depth=max_depth)
+            if hasattr(result, 'conclusions'):
+                conclusions = result.conclusions
         
         logger.info(f"推理完成，得到 {len(conclusions)} 个结论")
         return conclusions
